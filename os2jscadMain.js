@@ -146,11 +146,12 @@ function os2jscadMain(argv) {
 
   const lexerInstance = new os2jscadLexer();
   const parserInstance = new os2jscadParser ([],allTokens);
-  const interpreterInstance = new os2jscadInterpreter(options);
+  const interpreterInstance = new os2jscadInterpreter();
 
   commander
     .version('0.1.0')
     .option('-s, --stubs', 'Add stubs')
+    .option('-c, --comments', 'Include comments')
     .option('-i, --includes', 'Recursively build include dependency files')
     .option('-e, --fileExtension [extension]', 'Use this as the output file extension [jscad]', 'jscad')
     .parse(argv);
@@ -206,6 +207,7 @@ function os2jscadMain(argv) {
       options.libName=libName;
       options.fileExtension = commander.fileExtension;
       options.includes = commander.includes;
+      options.comments = commander.comments;
 
       var inputText="";
 
@@ -274,7 +276,7 @@ function os2jscadMain(argv) {
       annotateCST(cst);  // record the location of the starts of the nodes for error messages
       options.libName=libName
       //const ast = interpreterInstance.moduleDefinition(cst)
-      const ast = interpreterInstance.program(cst)
+      const ast = interpreterInstance.program(cst,options)
 
 
       return ast
