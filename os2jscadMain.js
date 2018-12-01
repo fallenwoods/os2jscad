@@ -12,15 +12,51 @@ Should this be done with three passes through the interpreter
 NOT HANDLED:
   surface: may add this as  a pre-defined function
   Search abilities.
-  $ special characters. are there non $ version of them
-
-
 
   FIXME
-    use include for helpers when -i is specified.
-    add lib to lib funcs in the module that included it
-      I made need to recursively do includes to make this happen
-    remove functionCtx if possible
+    Fix the text stuff in the helpers and stubs
+      I'm not sure I need to define text, I believe the original is rectangularly scaleable as in the example
+
+include('https://www.openjscad.org/fonts/camBamStick1.js');
+
+function main (params) {
+  let myfont = camBamStick1Font; // font object (! NOTE the "Font" suffix)
+  let text = vectorText({font: myfont, height: 5},'OpenJSCAD');
+  return csgFromSegments(text);
+}
+
+function csgFromSegments (segments) {
+  let output = [];
+  segments.forEach(segment => output.push(
+    rectangular_extrude(segment, { w:2, h:1 })
+  ));
+  return union(output);
+}
+
+    The signature stack stuff only works if functions are defined in order.
+      currently there is no 'function lifting' to get the signatures.
+      Also, the signature stack needs to be cleared between files when not doing recursive includes
+    Embedded if statements do not create the correct result if they follow a primitive rather than an operator
+    The problem with the parametric_involute_gear_v5.0.scad was the inability to do an assign (and var declaration) on a var that was already declared.
+    The 2nd problem with the parametric_involute_gear_v5.0.scad was a comment within the first CGSAction
+
+    move $h to before setDefaults (or don't use setDefauts for lib wrapper function)
+    Comments in return statements
+
+    Action types
+      null action (standalone ;)
+      simple action (function chain)
+      null actions (pair of empty braces)
+      simple action actions (one action in braces)
+      multiple action actions (several action in braces)
+      declarative actions (declaratives in braces - no actions)
+      declarative action actions (declarative and an action)
+      declarative multi action actions (declarative and multiple action)
+
+      each of the above can be in a functional ()
+
+
+
 
     BIG ISSUE:
       OpenScad allows /+-* of vectors (arrays). There is no way to create an override for this in javascript
@@ -40,15 +76,13 @@ NOT HANDLED:
       this impacts var declarations and 2nd tier module definitions
         should use static as the class scope since these are all singletons
     Would also like to fix the actions interpreter
-      it seems the function wrapping could be one in action rather than actions
+      it seems the function wrapping could be done in action rather than actions
         this would allow actions to be cleanly split in two, declarations and then real actions
         (perhaps I can break out declarations during the parsing?)
 
-  Known limitations:
+  Known Differences:
     Differences below
-    A certain collection of predefined functions are required e.g. flatten and echo
-    All assignments are move to the top of their scope
-    The build in rands doesn't work (as expected?)
+    A certain collection of predefined functions are required e.g. text, forLoop, echof
     comments are attached to the first 'real' token after them. If the tokens get reordered,
           trailing comments could be in the wrong place
 
@@ -57,6 +91,8 @@ NOT HANDLED:
     2D (CAG) objects don't allow Color()
     hull() only support 2D (CAG)
     you can'y create a union of 3d and 2D objects. 2D have to be converted to 3D
+    rotate(90)
+    include is a reserved word
 
   Observed differences that work but may change results
     linear extrude doesn't allow scale.
@@ -76,22 +112,7 @@ NOT HANDLED:
 
 
 */
-//const tojsCadVisitor = require("./OpenScad.js").tojsCad
-const beautify = require('js-beautify').js;
-var fs = require('fs');
-var path = require('path');
-var glob = require('glob');
-var commander = require('commander');
 
-const allTokens =  require('./src/os2jscadLexer.js').allTokens;
-const os2jscadLexer =  require('./src/os2jscadLexer.js').os2jscadLexer;
-const os2jscadParser =  require('./src/os2jscadParser.js').os2jscadParser;
-const os2jscadInterpreter =  require('./src/os2jscadInterpreter.js').os2jscadInterpreter;
-const getIncludeList = require("./src/getIncludeList.js").getIncludeList;
-
-const lexerInstance = new os2jscadLexer();
-const parserInstance = new os2jscadParser ([],allTokens);
-const interpreterInstance = new os2jscadInterpreter();
 
 /* command line
  list of files and/or directories to convert.
@@ -102,142 +123,180 @@ const interpreterInstance = new os2jscadInterpreter();
  - insert includes for a single file output
  - add export for require() (node mode)
 */
-
-commander
-  .version('0.1.0')
-  .option('-s, --stubs', 'Add stubs')
-  .option('-r, --stubs', 'Add stubs')
-  .option('-i, --includes', 'Recursively build include dependency files')
-  .option('-e, --fileExtension [extension]', 'Use this as the output file extension [jscad]', 'jscad')
-  .parse(process.argv);
-
-  var stubs;
-  var stubsTail;
-
-  // If we'll be adding stubs to files, get the stubs file content
-  if(commander.stubs){
-    stubs  = fs.readFileSync(__dirname + '/src/stubs.js', 'utf8');
-    stubsTail  = fs.readFileSync(__dirname + '/src/stubsTail.js', 'utf8');
-  }
-
-  var helpers =  fs.readFileSync(__dirname + '/src/helpers.js', 'utf8');;
-
-  // Convert the file patterns from the command line to fully qualified file paths
-var filenames = commander.args.map((fileName)=>glob.sync(path.join(__dirname, fileName))).reduce((acc,fileList)=>acc.concat(fileList),[]);
-
-var includeFiles=[];
-
-includeFiles = getIncludeList(filenames)
-
-if(includeFiles && !commander.includes) console.log("INFO: Consider using the -i option to recursively convert included library.")
-
-
-if(commander.includes){
-  for(let file of includeFiles){
-    processFile(file,true)
-  }
-}
-for(let file of filenames){
-  processFile(file,false)
-}
+function os2jscadMain(argv) {
+  //const tojsCadVisitor = require("./OpenScad.js").tojsCad
+  const beautify = require('js-beautify').js;
+  var fs = require('fs');
+  var path = require('path');
+  var glob = require('glob');
+  var commander = require('commander');
 
 
 
-  function processFile(fileName,isInclude){
+  const Utilities = require("./src/Utilities.js");
 
-    var options = Object.assign(commander)
+  var options = {};
 
-    var outFileName = fileName.replace(".scad","."+commander.fileExtension);
-    console.log(fileName);
-    console.log(" ",outFileName);
-    options.fileName = path.basename(outFileName);
+  const allTokens =  require('./src/os2jscadLexer.js').allTokens;
+  const os2jscadLexer =  require('./src/os2jscadLexer.js').os2jscadLexer;
+ // const os2jscadParser =  require('./src/os2jscadParser.js').os2jscadParser;
+  const os2jscadParser =  require('./src/os2jscadParser2.js').os2jscadParser;
+  const os2jscadInterpreter =  require('./src/os2jscadInterpreter.js').os2jscadInterpreter;
+  const getIncludeList = require("./src/getIncludeList.js").getIncludeList;
 
-    if(isInclude){
-      options.className = options.fileName.split(".")[0];
-      options.className = (options.className==="main") ? "mainLib" : options.className;
-    } else {
-      delete options.className;
-    }
+  const lexerInstance = new os2jscadLexer();
+  const parserInstance = new os2jscadParser ([],allTokens);
+  const interpreterInstance = new os2jscadInterpreter(options);
 
-    var inputText = fs.readFileSync(fileName, 'utf8');
+  commander
+    .version('0.1.0')
+    .option('-s, --stubs', 'Add stubs')
+    .option('-i, --includes', 'Recursively build include dependency files')
+    .option('-e, --fileExtension [extension]', 'Use this as the output file extension [jscad]', 'jscad')
+    .parse(argv);
 
-    // lex, parse and interpret the file
-    let result = tojsCad(inputText,options);
+    var stubs;
+    var stubsTail;
 
-    // format the result for output
-    result = beautify(result, { indent_size: 2, space_in_empty_paren: true });
+  //FIXME to clean up the logic around includes I should have 3 separate notions
+  // - library: build as library the code is wrapped in a function that 'exports' its methods else file is build as standalone (helpers are included inline)
+  // - recurse: build the command line files as indicated and then recurse to all dependent libraries and build them as libraries
+  // - inline code: create new files only for those listed on the command line, build code for depends as libs, but inline the result into the main.
+  // default would be -recurse (no lib or inline) - give a warning if no includes are found to use inline to inline helpers. (or just do it with a warning)
 
-
-    var fd = fs.openSync(outFileName,'w');
-
-    // optionally add the stubs file for debug
+    // If we'll be adding stubs to files, get the stubs file content
     if(commander.stubs){
-        fs.writeSync(fd, stubs,'end','utf8');   // position == 'end' will be ignored.
-        fs.writeSync(fd, result,'end','utf8');
-        fs.writeSync(fd, stubsTail,'end','utf8');
-
-    } else {
-        fs.writeSync(fd, result,'end','utf8');
-    }
-    // if the helpers should be embedded rather than access via include add the helpers file content
-    if(!commander.includes) {
-      //fs.writeSync(fd, '\n\nhelpers = \n','end','utf8');
-      fs.writeSync(fd, helpers,'end','utf8');
+      stubs  = fs.readFileSync(__dirname + '/src/stubs.js', 'utf8');
+      stubsTail  = fs.readFileSync(__dirname + '/src/stubsTail.js', 'utf8');
     }
 
-    fs.closeSync(fd);
+    var helpers =  fs.readFileSync(__dirname + '/src/helpers.js', 'utf8');
+
+    // Convert the file patterns from the command line to fully qualified file paths
+  var filenames = commander.args.map((fileName)=>glob.sync(path.join(__dirname, fileName))).reduce((acc,fileList)=>acc.concat(fileList),[]);
+
+  var includeFiles=[];
 
 
+  includeFiles = getIncludeList(filenames)
 
-}
-
-
-
-
-function tojsCad(inputText,options) {
-    const lexResult = lexerInstance.tokenize(inputText)
+  if(includeFiles && !commander.includes) console.log("INFO: Consider using the -i option to recursively convert included library.")
 
 
-    var newTokens = parserInstance.separateCommentTokens(lexResult.tokens)
-    // ".input" is a setter which will reset the parser's internal's state.
-    //parserInstance.input = lexResult.tokens;
-    parserInstance.input = newTokens;
-
-    // Automatic CST created when parsing
-    const cst = parserInstance.actions()
-    //console.log(JSON.stringify(cst,null,2));
-
-    if (parserInstance.errors.length > 0) {
-      var stack = parserInstance.errors[0].context.ruleStack;
-        throw Error(
-            "Parsing errors detected!\n" +
-                parserInstance.errors[0].message +
-                " at ("+parserInstance.errors[0].token.startLine+":"+parserInstance.errors[0].token.startColumn+")" +
-                " stack: > " + stack.toString()
-        )
+  if(commander.includes){
+    for(let file of includeFiles){
+      processFile(file,true)
     }
-    annotateCST(cst);  // record the location of the starts of the nodes for error messages
-    const ast = interpreterInstance.program(cst,options)
-
-    return ast
-}
-
-function annotateCST(ctx){
-    if(ctx.image){
-      ctx.$firstToken = ctx;
-    } else if(Array.isArray(ctx)){
-      ctx.forEach((elem)=>{annotateCST(elem)});
-      return ctx[0].$firstToken;
-    } else {
-      var firstToken={startOffset:Infinity};
-      //for(var key in Object.getOwnPropertyNames(ctx.children)){
-      Object.getOwnPropertyNames(ctx.children).forEach((prop)=>{
-        var first = annotateCST(ctx.children[prop]);
-        firstToken = first.startOffset < firstToken.startOffset ?  first : firstToken;
-      })
-      ctx.$firstToken = firstToken;
-    }
-    return ctx.$firstToken;
+  }
+  for(let file of filenames){
+    processFile(file,false)
   }
 
 
+
+    function processFile(fileName,isInclude){
+
+      var outFileName = fileName.replace(".scad","."+commander.fileExtension);
+      console.log(fileName);
+      console.log(" ",outFileName);
+
+      var libName = "lib"+ path.basename(outFileName).split(".")[0];
+      libName = libName.replace(/[.-\s]/g,"_");
+
+      options.libName=libName;
+      options.fileExtension = commander.fileExtension;
+      options.includes = commander.includes;
+
+      var inputText="";
+
+      inputText += fs.readFileSync(fileName, 'utf8');;
+
+
+      // lex, parse and interpret the file
+      let result = tojsCad( inputText,libName);
+
+      // format the result for output
+      result = beautify(result, { indent_size: 2, space_in_empty_paren: true });
+
+
+      var fd = fs.openSync(outFileName,'w');
+
+      // optionally add the stubs file for debug
+      if(commander.stubs){
+          fs.writeSync(fd, stubs,'end','utf8');   // position == 'end' will be ignored.
+          fs.writeSync(fd, result,'end','utf8');
+
+      } else {
+          fs.writeSync(fd, result,'end','utf8');
+      }
+      // if the helpers should be embedded rather than access via include add the helpers file content
+      if(commander.includes) {
+        fs.writeFileSync(path.dirname(outFileName)+"/helpers.js", helpers,'utf8');
+      } else {
+        fs.writeSync(fd, helpers,'end','utf8');
+      }
+      if(commander.stubs){
+        fs.writeSync(fd, stubsTail,'end','utf8');
+      }
+
+      fs.closeSync(fd);
+
+
+
+  }
+
+
+
+
+  function tojsCad(inputText,libName) {
+      const lexResult = lexerInstance.tokenize(inputText)
+
+
+      var newTokens = parserInstance.separateCommentTokens(lexResult.tokens)
+      // ".input" is a setter which will reset the parser's internal's state.
+      //parserInstance.input = lexResult.tokens;
+      parserInstance.input = newTokens;
+
+      // Automatic CST created when parsing
+      //const cst = parserInstance.moduleDefinition()
+      const cst = parserInstance.program()
+      //console.log(JSON.stringify(cst,null,2));
+
+      if (parserInstance.errors.length > 0) {
+        var stack = parserInstance.errors[0].context.ruleStack;
+          throw Error(
+              "Parsing errors detected!\n" +
+                  parserInstance.errors[0].message +
+                  " at ("+parserInstance.errors[0].token.startLine+":"+parserInstance.errors[0].token.startColumn+")" +
+                  " stack: > " + stack.toString()
+          )
+      }
+      annotateCST(cst);  // record the location of the starts of the nodes for error messages
+      options.libName=libName
+      //const ast = interpreterInstance.moduleDefinition(cst)
+      const ast = interpreterInstance.program(cst)
+
+
+      return ast
+  }
+
+  function annotateCST(ctx){
+      if(ctx.image){
+        ctx.$firstToken = ctx;
+      } else if(Array.isArray(ctx)){
+        ctx.forEach((elem)=>{annotateCST(elem)});
+        return ctx[0].$firstToken;
+      } else {
+        var firstToken={startOffset:Infinity};
+        //for(var key in Object.getOwnPropertyNames(ctx.children)){
+        Object.getOwnPropertyNames(ctx.children).forEach((prop)=>{
+          var first = annotateCST(ctx.children[prop]);
+          firstToken = first.startOffset < firstToken.startOffset ?  first : firstToken;
+        })
+        ctx.$firstToken = firstToken;
+      }
+      return ctx.$firstToken;
+    }
+}
+
+os2jscadMain(process.argv);
