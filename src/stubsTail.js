@@ -26,7 +26,7 @@ function color(a){ return showArgs('color',arguments); };
 function translate(a){return showArgs('translate',arguments);};
 function scale(a){ return showArgs('scale',arguments); };
 function rotate(a){ return showArgs('rotate',arguments); };
-
+function mirror (a){return showArgs('mirror',arguments); };
 
 function union(a){ return showArgs('union',arguments); };
 function intersection(a){ return showArgs('intersection',arguments); };
@@ -41,6 +41,7 @@ function sphere(a){ return showArgs('sphere',arguments); };
 function cube(a){ return showArgs('cube',arguments); };
 function cylinder(a){return showArgs('cylinder',arguments); };
 function polyhedron (a){return showArgs('polyhedron',arguments); };
+
 function linear_extrude (a){return showArgs('linear_extrude',arguments); };
 function rotate_extrude (a){return showArgs('rotate_extrude',arguments); };
 function rectangular_extrude (a){return showArgs('rectangular_extrude',arguments); };
@@ -92,6 +93,8 @@ function rands(min,max,cnt,seed) {
 //============================
 var result = main();
 result =  beautify(result, { indent_size: 2, space_in_empty_paren: true });
+
+result = "function main (){\n return " + result +  "\n}";
 
 fs.writeFileSync(__dirname + '/translated.js', result, {encoding:'utf8'});
 

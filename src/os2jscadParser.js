@@ -32,13 +32,24 @@ class  os2jscadParser extends Parser {
   constructor (input,tokens,config) {
     //tokens = tokens || allTokens;
     config = config ||  defConfig;
-    super(input, tokens, config)
+    //super(input, tokens, config)
+    super(tokens, config)
 
     $t = tokens.reduce((acc,elem)=>{acc[elem.name]=elem;return acc},{})
 
     // for conciseness
     const $ = this
 
+    $.RULE("program", () => {
+      $.MANY(() => {
+        $.OR1([
+          {ALT: () =>{$.SUBRULE($.assignment); $.CONSUME1($t.Semicolon)}},
+          {ALT: () =>$.SUBRULE($.declaration)},
+          {ALT: () =>$.SUBRULE($.action)
+          }
+        ])
+      })
+    })
 
     $.RULE("functionDefinition", () => {
       $.CONSUME($t.FunctionLiteral);
@@ -57,8 +68,78 @@ class  os2jscadParser extends Parser {
       $.CONSUME($t.LParen);
       $.SUBRULE($.parameters,{LABEL:"parameters"});
       $.CONSUME($t.RParen);
-      $.SUBRULE($.action,{LABEL:"body"});
+      $.SUBRULE($.moduleBody);
+    });
 
+    $.RULE("moduleBody", () => {
+      $.OR([
+        {ALT: () => {
+          $.CONSUME($t.LBrace);
+          $.MANY(() => {
+            $.OR1([
+              {ALT: () =>{$.SUBRULE($.assignment); $.CONSUME1($t.Semicolon)}},
+              {ALT: () =>$.SUBRULE($.declaration)},
+              {ALT: () =>$.SUBRULE($.action)
+              }
+            ])
+          })
+          $.CONSUME($t.RBrace);
+        }},
+        {ALT: () =>{$.SUBRULE2($.assignment); $.CONSUME2($t.Semicolon)}},
+        {ALT: () =>$.SUBRULE2($.declaration)},
+        {ALT: () =>$.SUBRULE2($.functionChain)},
+      ])
+    });
+
+    $.RULE("declaration", () => {
+      $.OR([
+        {ALT: () => $.SUBRULE($.includeStmt)},  // this will be ignore everywhere but the top level scope
+        {ALT: () => $.SUBRULE($.moduleDefinition)},
+        {ALT: () => $.SUBRULE($.functionDefinition)},
+        {ALT: () => $.CONSUME3($t.Semicolon)},
+      ])
+    });
+
+
+    $.RULE("action", () => {
+      $.OR([
+        {ALT: () => {
+          $.CONSUME($t.LBrace);
+          $.MANY(() => {    // allow for empty braces
+            $.OR1([
+              {ALT: () =>$.SUBRULE($.action)},
+              {ALT: () => {$.SUBRULE($.assignment); $.CONSUME1($t.Semicolon)}}
+            ]);
+          });
+          $.CONSUME($t.RBrace);
+        }},
+        {ALT: () => $.SUBRULE($.functionChain)},
+        {ALT: () => $.SUBRULE($.ifStatement)},
+        {ALT: () => $.SUBRULE($.forLoop)},
+        {ALT: () => $.SUBRULE($.CSGAction)},
+        {ALT: () => $.SUBRULE($.letStmt)},
+
+      ])
+    });
+
+    $.RULE("functionChain", () => {
+      $.OPTION(() => {
+        $.SUBRULE($.debugModifier);
+      })
+      $.OR([
+        {ALT: () =>{
+          $.CONSUME($t.Identifier);
+          $.CONSUME($t.LParen);
+          $.SUBRULE($.arguments,{LABEL:"arguments"});
+          $.CONSUME($t.RParen);
+          $.OR1([
+            {ALT: () => $.SUBRULE($.action)},
+            {ALT: () => $.CONSUME($t.Semicolon)}
+          ])
+        }},
+
+
+      ])
 
     });
 
@@ -73,45 +154,12 @@ class  os2jscadParser extends Parser {
       })
     });
 
-    $.RULE("actions", () => {
-      $.AT_LEAST_ONE(() => {
-        $.OR([
-          {ALT: () =>$.SUBRULE($.action)},
-          {ALT: () => $.SUBRULE($.includeStmt)},  // this will be ignore everywhere but the top level scope
-          {ALT: () => {$.SUBRULE($.assignment); $.CONSUME2($t.Semicolon);}},
-          {ALT: () =>  $.SUBRULE($.moduleDefinition)},
-          {ALT: () =>  $.SUBRULE($.functionDefinition)}
-        ])
-      })
-    });
-
-    $.RULE("action", () => {
-
-      $.MANY(() => {
-        $.SUBRULE($.functionCall);
-      });
-      $.OR2([
-        {ALT: () => $.CONSUME($t.Semicolon)},
-
-        {ALT: () => $.SUBRULE($.forLoop)},
-        {ALT: () => $.SUBRULE($.ifStatement)},
-        {ALT: () => $.SUBRULE($.CSGAction)},
-        {ALT: () => $.SUBRULE($.letStmt)},      // It's not clear where let can appear in the grammar. Does it need to be within a for loop?
-        {ALT: () => {
-          $.CONSUME($t.LBrace);
-          $.OPTION2(() => {
-            $.SUBRULE($.actions)
-          })
-          $.CONSUME($t.RBrace);
-        }}
-      ])
-    });
-
 
     $.RULE("includeStmt", () => {
       $.CONSUME($t.IncludeLiteral);
       $.CONSUME($t.IncludeFile);
     });
+
 
 
     $.RULE("letStmt", () => {
@@ -122,12 +170,15 @@ class  os2jscadParser extends Parser {
       $.SUBRULE($.action);
     });
 
+
     $.RULE("CSGAction", () => {
       $.CONSUME($t.CSGLiteral);
       $.CONSUME($t.LParen);
       $.CONSUME($t.RParen);
       $.SUBRULE1($.action);
     });
+
+
 
     $.RULE("assignment", () => {
       $.CONSUME($t.Identifier, { LABEL: "lhs" });
@@ -258,6 +309,7 @@ class  os2jscadParser extends Parser {
       $.CONSUME($t.RSquare);
     });
 
+
     $.RULE("array", () => {
 
       $.CONSUME($t.LSquare);
@@ -299,6 +351,8 @@ class  os2jscadParser extends Parser {
       });
     });
 
+
+
     $.RULE("functionCall", () => {
       $.OPTION(() => {
         $.SUBRULE($.debugModifier);
@@ -308,8 +362,6 @@ class  os2jscadParser extends Parser {
       $.SUBRULE($.arguments,{LABEL:"arguments"});
       $.CONSUME($t.RParen);
     });
-
-
 
     $.RULE("arguments", () => {
       $.MANY_SEP({
@@ -334,6 +386,7 @@ class  os2jscadParser extends Parser {
       {ALT: () => $.CONSUME($t.CommentBlock)}
     ]));
 
+
     $.RULE("forLoop", () => {
       $.CONSUME($t.ForLiteral);
       $.CONSUME($t.LParen);
@@ -344,8 +397,10 @@ class  os2jscadParser extends Parser {
           }
       });
       $.CONSUME($t.RParen);
-      $.SUBRULE($.action,{LABEL:"body"});
+      $.SUBRULE($.action);
     });
+
+
 
     /*
     $.RULE("forRange", () => {
@@ -385,6 +440,7 @@ class  os2jscadParser extends Parser {
     });
     //*/
 
+
     $.RULE("ifStatement", () => {
       $.CONSUME($t.IfLiteral);
       $.CONSUME($t.LParen);
@@ -396,6 +452,7 @@ class  os2jscadParser extends Parser {
         $.SUBRULE2($.action,{LABEL:"elseClause"});
       });
     });
+
 
 
     // very important to call this after all the rules have been defined.

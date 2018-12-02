@@ -139,8 +139,7 @@ function os2jscadMain(argv) {
 
   const allTokens =  require('./src/os2jscadLexer.js').allTokens;
   const os2jscadLexer =  require('./src/os2jscadLexer.js').os2jscadLexer;
- // const os2jscadParser =  require('./src/os2jscadParser.js').os2jscadParser;
-  const os2jscadParser =  require('./src/os2jscadParser2.js').os2jscadParser;
+  const os2jscadParser =  require('./src/os2jscadParser.js').os2jscadParser;
   const os2jscadInterpreter =  require('./src/os2jscadInterpreter.js').os2jscadInterpreter;
   const getIncludeList = require("./src/getIncludeList.js").getIncludeList;
 

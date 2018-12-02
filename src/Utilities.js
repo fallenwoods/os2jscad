@@ -77,17 +77,15 @@ class OptionsStack {
         return this.peek();
     }
 }
-
+var doComments = false;
 class CommentTools {
 
-    /*
-    static tryToken(ctx){
-        ctx = this.trySkipArray(ctx);
-        return ctx.image ? this.addComments(ctx) : "";
-      }
-    //*/
+    static  doComments(aDoComments){
+        doComments=aDoComments;
+    }
 
     static  addComments(ctx){
+        if (!doComments) return "";
         ctx = CtxTools.trySkipArray(ctx);
         var result ="";
         if(ctx.$firstToken.precedingComments && ctx.$firstToken.precedingComments.length>0){
@@ -103,24 +101,7 @@ class CommentTools {
         }
         return result;
       }
-    /*
-    static  findFirstToken(ctx){
-        var result;
-        var resultOffset=Number.MAX_SAFE_INTEGER;
-        if (ctx.image) return ctx; // if this is a token, return its offset in the file
 
-        // if this isn't a token, recurse
-        ctx = this.trySkipArray(ctx);
-        for(key in Object.keys(ctx.children)){
-          var firstChildToken = findFirstToken(ctx.children[key]);
-          if(firstChildToken.location.offset < resultOffset){
-            result = firstChildToken;
-            resultOffset = firstChildToken.location.offset;
-          }
-        }
-        return result;
-      }
-      //*/
 
 }
 

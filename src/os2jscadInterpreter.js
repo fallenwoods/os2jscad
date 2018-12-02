@@ -21,10 +21,10 @@ var importIncludes="";
 
   class os2jscadInterpreter {//extends BaseCstVisitor {
 
-    constructor(aOptions) {
+    constructor() {
         //super();                  //FIXME add this and the validator back in. (I'm not using visitor() so this may not be needed.)
 
-        this.options = aOptions;
+        this.options;
         this.ctxTools= new CtxTools(this);
         this.signatureStack = new SignatureStack();
         // This helper will detect any missing or redundant methods on this visitor
@@ -68,7 +68,7 @@ var importIncludes="";
       for(var prop in ctx.children){
         switch(prop){
           case "functionCall":
-            result += this.ctxTools.childToString(ctx.children.functionCall).slice(0,-2) +")"; // FIXME - can we count on slice to work here?
+            result += this.ctxTools.childToString(ctx.children.functionCall);
           break;
           case "arrayLookup":
             result += this.ctxTools.iterate(ctx.children.arrayLookup);
@@ -135,6 +135,7 @@ var importIncludes="";
     functionDefinition(ctx,libName) {
       var functionName = ctx.children.Identifier[0].image;
       var params = this.paramsParser(ctx.children.parameters)
+      this.options.moduleName = functionName;
 
       this.signatureStack.saveSignature(functionName,params,libName);
 
@@ -158,6 +159,7 @@ var importIncludes="";
     moduleDefinition(ctx,libName) {
       var moduleName = ctx.children.Identifier[0].image;
       var params = this.paramsParser(ctx.children.parameters)
+      this.options.moduleName = moduleName;
 
       this.signatureStack.saveSignature(moduleName,params,libName);
 
@@ -180,9 +182,13 @@ var importIncludes="";
       return result;
     }
 
-    program(ctx) {
+    program(ctx,options) {
+      this.options = options;
+
+      CommentTools.doComments(options.comments===true);
       var result = "";
       var libName = this.options.libName;
+      this.options.moduleName = libName;
       result += "\n"+CommentTools.addComments(ctx);
 
       result += "function " + libName + " () {\n $h();\n"
@@ -388,39 +394,6 @@ var importIncludes="";
       var named = args.slice(-1)[0] || {};
       args = args.slice(0,-1);
 
-      result +=  " " + ((signature && signature.libName) ? signature.libName+"." : "") + funcName
-      result +=   "(  ";
-      result +=  args.length ? args.toString() +", "  :"";
-      result +=  Object.keys(named).length>0 ?  "{"+Object.keys(named).reduce((acc,key)=>{return acc +( key + ":" + named[key]+",")},"").slice(0,-1) +"}, " :"";
-
-
-
-     var action =  this.ctxTools.iterate(ctx.children.action,", ") ;
-
-     if(action !== ""){
-      result += action;
-     } else {
-       result = result.slice(0,-2);
-     }
-
-      result +=   ")  ";
-
-      return result;
-
-    }
-
-    functionCall(ctx) {
-      var result = "";
-
-      if(ctx.children.debugModifier)  result += "/* debug " + this.ctxTools.childToString(ctx.children.debugModifier[0]) + " */"
-
-      var funcName = ctx.children.Identifier[0].image;
-
-      var signature = this.signatureStack.getSignature(funcName);
-
-      var args = this.argumentsParser(ctx.children.arguments,signature);
-      var named = args.slice(-1)[0] || {};
-      args = args.slice(0,-1);
 
       Logging.warnCheck(ctx,(funcName=="linear_extrude" && named.scale)," OpenJSCAD linear_extrude does not recognize the scale argument")
       Logging.warnCheck(ctx,(funcName=="linear_extrude" && named.center)," OpenJSCAD linear_extrude will center in x,y,z rather than just z")
@@ -428,7 +401,9 @@ var importIncludes="";
 
       funcName = funcName ==="echo" ? "echof" : funcName;
       if(funcName ==="circle") named.center = named.center ? named.center : true;
-      if(funcName ==="cylinder" && (named.r2 && !named.r1)) {named.r1 = named.r; delete named.r;}
+      if(funcName ==="cylinder" && (named.r2 && !named.r1)) {
+        named.r1 = named.r; delete named.r;
+      }
 
       // There is no available import in jscad, the code below assumes that the import file has been pre-processed into
       //  a jscad .js file and is available in the target import directory
@@ -447,13 +422,44 @@ var importIncludes="";
         result +=   "(  ";
         result +=  args.length ? args.toString() +", "  :"";
         result +=  Object.keys(named).length>0 ?  "{"+Object.keys(named).reduce((acc,key)=>{return acc +( key + ":" + named[key]+",")},"").slice(0,-1) +"}, " :"";
-        //result +=   ",";
+
+        var action =  this.ctxTools.iterate(ctx.children.action,", ") ;
+
+        if(action !== ""){
+          result += action;
+        } else {
+          result = result.slice(0,-2);
+        }
+
+        result +=   ")  ";
       }
+
+      return result;
+
+    }
+
+    functionCall(ctx) {
+      var result = "";
+      var funcName = ctx.children.Identifier[0].image;
+
+      var signature = this.signatureStack.getSignature(funcName);
+      var args = this.argumentsParser(ctx.children.arguments,signature);
+      var named = args.slice(-1)[0] || {};
+      args = args.slice(0,-1);
+
+      result +=  " " + ((signature && signature.libName) ? signature.libName+"." : "") + funcName
+      result +=   "(  ";
+      result +=  args.length ? args.toString() +", "  :"";
+      result +=  Object.keys(named).length>0 ?  "{"+Object.keys(named).reduce((acc,key)=>{return acc +( key + ":" + named[key]+",")},"").slice(0,-1) +"}, " :"";
+
+      result = result.slice(0,-2);
+
+      result +=   ")  ";
 
 
       return result;
-    }
 
+    }
 
     parenthesisExpression(ctx) { return this.ctxTools.iterateChildren(ctx,["LParen","expression","RParen"]);}
     parameters(ctx) { return this.ctxTools.childToString(ctx);}
@@ -627,7 +633,7 @@ var importIncludes="";
         result += "]=elem; "
         result += CommentTools.addComments(ctx.children.action);
         result += this.actionAssigns(ctx.children.action[0],"");
-        result += "return " + this.actionActions(ctx.children.action[0],"",true);
+        result += "return " + this.actionActions(ctx.children.action[0],"");
         result += "}))"
 
         return result;
