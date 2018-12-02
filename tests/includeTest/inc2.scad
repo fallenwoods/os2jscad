@@ -1,8 +1,9 @@
-include <inc4.scad>
+include <inc3.scad>
 
-a = 4;
+a = 3;
 
-module foo(r) {
-  sphere (a*r);
+module foo2(r) {
+  translate([r*10,0,0]) sphere (a+r);
+  foo3(a);
 }
-foo(5);
+foo2(2*a);

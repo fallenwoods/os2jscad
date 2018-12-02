@@ -21,43 +21,37 @@
     {
         "type": "node",
         "request": "launch",
-        "name": "Launch OpenScad",
-        "args": ["examples/pins/pin_joints.scad"],
-        "program": "${workspaceFolder}/OpenScadTest.js"
-    },
-    {
-        "type": "node",
-        "request": "launch",
-        "name": "Launch Test",
-        "args": ["-e","js","examples/test.scad"],
+        "name": "Build examples",
+        "args": ["-e","js","examples/*.scad"],
         "program": "${workspaceFolder}/os2jscadMain.js"
     },
     {
         "type": "node",
         "request": "launch",
-        "name": "Test w Stubs",
-        "args": ["-e","js","-s","examples/test.scad"],
+        "name": "Run Mocha Tests",
+        "args": ["tests/test.js"],
+        "program": "${workspaceFolder}/node_modules/mocha/bin/mocha"
+    },
+    {
+        "type": "node",
+        "request": "launch",
+        "name": "Include Test",
+        "args": ["-e","js","-i","tests/includeTest/main.scad"],
         "program": "${workspaceFolder}/os2jscadMain.js"
     },
     {
         "type": "node",
         "request": "launch",
-        "name": "Launch Includes",
-        "args": ["-e","js","-i","includeTest4/main*.scad"],
+        "name": "Sample",
+        "args": ["-e","js","examples/sample.scad"],
         "program": "${workspaceFolder}/os2jscadMain.js"
     },
     {
         "type": "node",
         "request": "launch",
-        "name": "Launch examples",
-        "args": ["examples/*.scad"],
+        "name": "Sample w Stubs",
+        "args": ["-e","js","-s","examples/sample.scad"],
         "program": "${workspaceFolder}/os2jscadMain.js"
-    },
-    {
-        "type": "node",
-        "request": "launch",
-        "name": "Launch jscadTest.js",
-        "program": "${workspaceFolder}/jscadTest.js"
     },
     {
         "type": "node",

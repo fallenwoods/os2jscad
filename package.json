@@ -16,6 +16,6 @@
         "mocha": "^5.2.0"
     },
     "scripts": {
-        "test": "node ./node_modules/mocha/bin/mocha"
+        "test": "node ./node_modules/mocha/bin/mocha tests/test.js"
     }
 }

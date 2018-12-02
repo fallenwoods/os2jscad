@@ -4,57 +4,24 @@
  https://sap.github.io/chevrotain/docs/tutorial/step0_introduction.html
 
  NOTE:
-Should this be done with three passes through the interpreter
+Should this be done with three passes through the interpreter?
   - do a pass to find includes
   - do a pass to build signatures (with lib refs)
   - do a pass to convert the files based on their use in includes or not (simple when not)
+  - Also, the signature stack needs to be cleared between independent files (or directories)
 
 NOT HANDLED:
   surface: may add this as  a pre-defined function
   Search abilities.
 
+  NEXT:
+    Remove examples and replace with a wget of the originals.
+      Is there a wget for node, so that it need not be installed ( not default for windows)
+
   FIXME
-    Fix the text stuff in the helpers and stubs
-      I'm not sure I need to define text, I believe the original is rectangularly scaleable as in the example
-
-include('https://www.openjscad.org/fonts/camBamStick1.js');
-
-function main (params) {
-  let myfont = camBamStick1Font; // font object (! NOTE the "Font" suffix)
-  let text = vectorText({font: myfont, height: 5},'OpenJSCAD');
-  return csgFromSegments(text);
-}
-
-function csgFromSegments (segments) {
-  let output = [];
-  segments.forEach(segment => output.push(
-    rectangular_extrude(segment, { w:2, h:1 })
-  ));
-  return union(output);
-}
-
-    The signature stack stuff only works if functions are defined in order.
-      currently there is no 'function lifting' to get the signatures.
-      Also, the signature stack needs to be cleared between files when not doing recursive includes
-    Embedded if statements do not create the correct result if they follow a primitive rather than an operator
-    The problem with the parametric_involute_gear_v5.0.scad was the inability to do an assign (and var declaration) on a var that was already declared.
-    The 2nd problem with the parametric_involute_gear_v5.0.scad was a comment within the first CGSAction
-
-    move $h to before setDefaults (or don't use setDefauts for lib wrapper function)
-    Comments in return statements
-
-    Action types
-      null action (standalone ;)
-      simple action (function chain)
-      null actions (pair of empty braces)
-      simple action actions (one action in braces)
-      multiple action actions (several action in braces)
-      declarative actions (declaratives in braces - no actions)
-      declarative action actions (declarative and an action)
-      declarative multi action actions (declarative and multiple action)
-
-      each of the above can be in a functional ()
-
+    Make sure include mode is still working. A number of changes have a been made in that area.
+    Comments in return statements. (Currently comments need to be turned on to work.)
+    Embedded if statements do not create the correct result if they follow a primitive rather than an operator (Still true?)
 
 
 
@@ -70,16 +37,6 @@ function csgFromSegments (segments) {
       I suspect it's just a really bad algorithm, buts it hard to confirm the same behavior happens in the scad version
       The scad version does run w/o running out of stack, (but locks up with a 50x50x50 maze (and perhaps less))
 
-
-  NEXT:
-    Try to introduce the class wrappers
-      this impacts var declarations and 2nd tier module definitions
-        should use static as the class scope since these are all singletons
-    Would also like to fix the actions interpreter
-      it seems the function wrapping could be done in action rather than actions
-        this would allow actions to be cleanly split in two, declarations and then real actions
-        (perhaps I can break out declarations during the parsing?)
-
   Known Differences:
     Differences below
     A certain collection of predefined functions are required e.g. text, forLoop, echof
@@ -90,8 +47,8 @@ function csgFromSegments (segments) {
     mirror with [0,0,0] as the vector (0 distance from origin) (add warning and fix)
     2D (CAG) objects don't allow Color()
     hull() only support 2D (CAG)
-    you can'y create a union of 3d and 2D objects. 2D have to be converted to 3D
-    rotate(90)
+    you can't create a union of 3d and 2D objects. 2D have to be converted to 3D
+    rotate(90) is an invalid syntax
     include is a reserved word
 
   Observed differences that work but may change results
@@ -100,7 +57,7 @@ function csgFromSegments (segments) {
     debug modifiers are allowed but ignored. The relevant subtree is simply rendered with everything else.
 
   Import
-    import files need to be preprocessed (drop them into OpenJSCAD window and grab the resulting js)
+    dfx import files need to be preprocessed (drop them into OpenJSCAD window and grab the resulting js)
     The preprocessor currently does not work fully for dxf files (at least those I was trying)
       to fix the dxf, I returned {} rather than [] from empty layers and ended the main return list with {} rather than []
       I also replaced the layer1 return value with polygon(jscad1) rather than [jscad1,]
@@ -108,21 +65,22 @@ function csgFromSegments (segments) {
         this last change allows cross_profile_dxf() to be called (be visible) from the code which originally called import()
     This interpreter replaces the import call with <filename>_dxf() and adds an include for the <filename>_dxf.js file
 
+    Notes: Action types
+      null action (standalone ;)
+      simple action (function chain)
+      null actions (pair of empty braces)
+      simple action actions (one action in braces)
+      multiple action actions (several action in braces)
+      declarative actions (declaratives in braces - no actions)
+      declarative action actions (declarative and an action)
+      declarative multi action actions (declarative and multiple action)
 
+      each of the above can be in a functional () or non-functional context
+        e.g. translate([]) foo(); or module bar() {foo();} only the latter requires a return
 
 
 */
 
-
-/* command line
- list of files and/or directories to convert.
-
- Options
- - specify the main file name (defaults to main.scad)
- - add stubs
- - insert includes for a single file output
- - add export for require() (node mode)
-*/
 function os2jscadMain(argv) {
   //const tojsCadVisitor = require("./OpenScad.js").tojsCad
   const beautify = require('js-beautify').js;

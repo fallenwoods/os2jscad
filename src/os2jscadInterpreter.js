@@ -191,7 +191,7 @@ var importIncludes="";
       this.options.moduleName = libName;
       result += "\n"+CommentTools.addComments(ctx);
 
-      result += "function " + libName + " () {\n $h();\n"
+      result += libName + " = function () {\n $h();\n"
 
       result += this.moduleBodyDeclarations(ctx,libName);  // This context actually is a moduleBody
 
@@ -289,7 +289,7 @@ var importIncludes="";
 
       result +=  CommentTools.addComments(ctx.children.IncludeLiteral,true);
       result +=  'include ("' + filePath + '"); '
-      result +=  fileBase.split(".")[0] +'();\n';
+      result +=  'lib' + fileBase.split(".")[0] +'();\n';
       return result;
     }
 
