@@ -19,8 +19,8 @@ NOT HANDLED:
       Is there a wget for node, so that it need not be installed ( not default for windows)
 
   FIXME
-    There are still issues with text. It does not work properly when used with union() etc.
-    Embedded if statements do not create the correct result if they follow a primitive rather than an operator (Still true?)
+    There is still issues if a module is defined after it is first used. There is no lifting when tagging them with
+    the library. see the NOTE above.
 
 
 
@@ -232,10 +232,21 @@ function os2jscadMain(argv) {
       annotateCST(cst);  // record the location of the starts of the nodes for error messages
       options.libName=libName
       //const ast = interpreterInstance.moduleDefinition(cst)
-      const ast = interpreterInstance.program(cst,options)
+      var result = interpreterInstance.program(cst,options)
+
+      /* A Hack. In javascript a return statement must have and expression on the same line, it won't line wrap.
+        I gave up trying to prevent a '//' style comment from following a return statement e.g.
+        return // comment
+        foo();
+
+        This regular expression just move the return on the next line after the comment
+      */
+      while (result.match(/return[^\/]\/\//)){
+        result = result.replace(/return[^\/](\/\/[^\n]*)\n(\s*)/g,"$1\n$2return ");
+      }
 
 
-      return ast
+      return result
   }
 
   function annotateCST(ctx){

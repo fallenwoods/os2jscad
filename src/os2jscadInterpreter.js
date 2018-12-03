@@ -347,7 +347,6 @@ const Logging = Utilities.Logging;
     actionActions(ctx,sep,csgType) {
       var result = "";
       sep = sep || ", ";
-      csgType = csgType || "union";
 
       result += this.ctxTools.childToString(ctx.children.ifStatement);
       result += this.ctxTools.childToString(ctx.children.forLoop);
@@ -356,9 +355,16 @@ const Logging = Utilities.Logging;
       result += this.ctxTools.childToString(ctx.children.letStmt);
 
 
-      if(ctx.children.action && ctx.children.action.length > 1) result += csgType + " ( "
-      result += this.ctxTools.iterate(ctx.children.action,sep);
-      if(ctx.children.action && ctx.children.action.length > 1) result += ")"
+      // NOTE: expressions like difference() cube(); are equivalent to difference(cube()) which is in turn equivalent to cube();
+      //  So in cases like this the expression is translated to remove the CSGAction e.g. no difference() in the example.
+      if((ctx.children.action && ctx.children.action.length > 1)){
+        csgType = csgType || "union";
+        result += csgType + " ( "
+        result += this.ctxTools.iterate(ctx.children.action,sep);
+        result += ")"
+      } else {
+        result += this.ctxTools.iterate(ctx.children.action,sep);
+      }
 
       return result;
     }
@@ -417,7 +423,6 @@ const Logging = Utilities.Logging;
         var layer = named.layer || args[2];
         funcName = fileName.replace(/\./g,"_").slice(1,-1);
         fileName = fileName.replace(/\.(dxf|stl)/,"_$1.js");
-        importIncludes += 'include ('+fileName+');\n'
 
         result += "(" + funcName + "("+ (convexity || "") +")["+ (layer || '1') +"], ";
 

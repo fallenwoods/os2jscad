@@ -1,0 +1,55 @@
+pathextrude       vector math
+pixel-beads-fixed import of image
+roboarm           import stl
+MarlinMesh        vector math
+flatSpring        centering of linear_extrusion
+mounting library  include arduino
+parametrix_involute_gear_v5.0
+  bad if() echo in gear() (Fixed)
+  2nd assign stmt in involute_gear() disappears (fixed)
+  setDefaults was not called for bevel_involute_gear_tooth() because it had no defaults (fixed)
+  involute_facets was not set. Was passed as 0, in a?a?undefined and so ended up undefined (fixed)
+  let of finsh after it's defined in bevel_gear() (fixed with var)
+  fn not defined (added it by hand to test)
+  Renders, but looks nothing like the original. Not sure I feel like debugging it.
+
+celtix-knots
+	empty if did not insert nullCSG();
+
+libflat_springV1_3, MarlinMesh
+  issue with var in front of return in forLoop
+  Still has issues with squares not being centered.
+  
+gears
+  wrong arguments
+  
+head-bashercurved
+  minkowski
+  
+  nm_ringNoLogo (but not nm_ring)
+  comment in the return stmt in ring()
+  
+pathextrude
+  vector math
+  libpathextrude.torusknot is not a function
+  a var is set to the result of a function
+  the functions are not 'lifted' because they are assigned to the base class for export.
+  
+ring nologo
+  comment after return
+  function definition order
+
+ring
+  function definition order
+  
+parametric_involute_gear_v5.0
+  Unexpected token )
+  
+Spiral_HornB
+  animate is not a function
+  spiral_horn() did not have $h.setArguments() called for it.
+  
+  
+
+  
+  
