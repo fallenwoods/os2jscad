@@ -1,5 +1,1 @@
-if (true)
-// test
-sphere();
-a=[for(i=[1:2:6])  // a test
-i];
+cube(3); if(true) cbue(4); else cube(5);

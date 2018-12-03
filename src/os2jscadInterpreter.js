@@ -237,9 +237,10 @@ const Logging = Utilities.Logging;
           result += "return union ("
           result +=  this.ctxTools.iterate(ctx.children.action,", ");
           result += ")"
-        } else
-        result += CommentTools.addComments(ctx.children.action);
+        } else {
+          result += CommentTools.addComments(ctx.children.action);
           result +=  "return " + this.ctxTools.iterate(ctx.children.action,", ");
+        }
       } else {
         result += "return nullCSG();"
       }
