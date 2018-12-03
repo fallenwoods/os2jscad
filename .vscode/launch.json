@@ -43,7 +43,7 @@
         "type": "node",
         "request": "launch",
         "name": "Sample",
-        "args": ["-e","js","examples/sample.scad"],
+        "args": ["-e","js","-c","examples/sample.scad"],
         "program": "${workspaceFolder}/os2jscadMain.js"
     },
     {
@@ -58,6 +58,13 @@
         "request": "launch",
         "name": "Launch output.js",
         "program": "${workspaceFolder}/output.js"
+    },
+    {
+        "type": "node",
+        "request": "launch",
+        "name": "Text",
+        "args": ["-e","js","-i","tests/textTest/text.scad"],
+        "program": "${workspaceFolder}/os2jscadMain.js"
     }
     ]
 }

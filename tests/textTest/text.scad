@@ -1,0 +1,1 @@
+if(true) text("Hello"); else text("Goodby");

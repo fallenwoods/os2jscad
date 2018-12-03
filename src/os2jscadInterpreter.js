@@ -15,7 +15,6 @@ const Logging = Utilities.Logging;
 
 \*=============================================================================================*/
 
-var importIncludes="";
 //var $t=0,$fn=0,$fa=12,$fs=2,$preview=false,$vpr=[0,0,0],$vpt=[10,10,10],$vpd=50;
 
 
@@ -191,7 +190,8 @@ var importIncludes="";
       this.options.moduleName = libName;
       result += "\n"+CommentTools.addComments(ctx);
 
-      result += libName + " = function () {\n $h();\n"
+      result += libName + " = function () {\n";
+      result += (options.includes ? 'include ("helpers.js");' : "") + "\n$h();\n"
 
       result += this.moduleBodyDeclarations(ctx,libName);  // This context actually is a moduleBody
 
@@ -238,6 +238,7 @@ var importIncludes="";
           result +=  this.ctxTools.iterate(ctx.children.action,", ");
           result += ")"
         } else
+        result += CommentTools.addComments(ctx.children.action);
           result +=  "return " + this.ctxTools.iterate(ctx.children.action,", ");
       } else {
         result += "return nullCSG();"
@@ -306,6 +307,7 @@ var importIncludes="";
       }
 
       result += this.actionAssigns(ctx.children.action[0]);
+      result += CommentTools.addComments(ctx.children.action);
       result += "return " + this.actionActions(ctx.children.action[0]) +";";
 
 
@@ -374,6 +376,7 @@ var importIncludes="";
         result += "((()=>{"
 
         result += assigns;
+        result += CommentTools.addComments(ctx.children.action);
         result += "return " + this.actionActions(ctx.children.action[0],", ",csgType);
 
         result += "})()) ";
@@ -559,19 +562,20 @@ var importIncludes="";
     ifStatement(ctx) {
       var result = ""
 
-      result += CommentTools.addComments(ctx.children.IfLiteral,true);
       result += "$h.ifFunc(";
 
       result += "("+this.ctxTools.childToString(ctx.children.expression) +")";
 
       result += ",()=>{";
       result +=  this.actionAssigns(ctx.children.ifClause[0]);
+      result += CommentTools.addComments(ctx.children.ifClause,true);
       result +=  "return " + this.actionActions(ctx.children.ifClause[0]);
       result += "}";
 
       if(ctx.children.elseClause){
         result += ",()=>{";
         result +=  this.actionAssigns(ctx.children.elseClause[0]);
+        result += CommentTools.addComments(ctx.children.elseClause,true);
         result +=  "return " + this.actionActions(ctx.children.elseClause[0]);
         result += "}";
       }
@@ -610,7 +614,7 @@ var importIncludes="";
           result += (found ? "" : "let ") + prop + " = " + args[prop] + ";\n";
         }
       };
-
+      result += CommentTools.addComments(ctx.children.body,true);
       result += "return (" + this.ctxTools.childToString(ctx.children.body) + ");"; // expression
 
       result += "})";
@@ -631,8 +635,8 @@ var importIncludes="";
 
         result += ranges.reduce((acc,range)=>acc+=range.name+",","").slice(0,-1)
         result += "]=elem; "
-        result += CommentTools.addComments(ctx.children.action);
         result += this.actionAssigns(ctx.children.action[0],"");
+        result += CommentTools.addComments(ctx.children.action);
         result += "return " + this.actionActions(ctx.children.action[0],"");
         result += "}))"
 

@@ -96,8 +96,10 @@ class CommentTools {
           result +=  "\n";
           delete ctx.$firstToken.precedingComments;
         }
-        if(ctx.$firstToken.tokenType.name === "LBrace" && ctx.children.actions){    // Special case where this may be the start of a block
-            result += CommentTools.addComments(ctx.children.actions);
+
+        //if(ctx.$firstToken.tokenType.name === "LBrace" && ctx.children.action){    // Special case where this may be the start of a block
+        if(ctx.children && ctx.children.action){    // Special case where this may be the start of a block
+            result += "\n" + CommentTools.addComments(ctx.children.action);
         }
         return result;
       }

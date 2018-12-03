@@ -19,8 +19,7 @@ NOT HANDLED:
       Is there a wget for node, so that it need not be installed ( not default for windows)
 
   FIXME
-    Make sure include mode is still working. A number of changes have a been made in that area.
-    Comments in return statements. (Currently comments need to be turned on to work.)
+    There are still issues with text. It does not work properly when used with union() etc.
     Embedded if statements do not create the correct result if they follow a primitive rather than an operator (Still true?)
 
 
