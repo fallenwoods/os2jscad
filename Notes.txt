@@ -1,3 +1,9 @@
+Troubleshooting
+Cannot use 'in' operator to search for 'extrude2d' in undefined
+Cannot read property 'length' of undefined: return an empty value (or empty array?)
+<function> is not defined:    libraries are defined out of order.
+
+
 pathextrude       vector math
 pixel-beads-fixed import of image
 roboarm           import stl

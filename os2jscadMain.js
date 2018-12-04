@@ -19,9 +19,6 @@ NOT HANDLED:
       Is there a wget for node, so that it need not be installed ( not default for windows)
 
   FIXME
-    There is still issues if a module is defined after it is first used. There is no lifting when tagging them with
-    the library. see the NOTE above.
-
 
 
     BIG ISSUE:
@@ -97,11 +94,13 @@ function os2jscadMain(argv) {
   const allTokens =  require('./src/os2jscadLexer.js').allTokens;
   const os2jscadLexer =  require('./src/os2jscadLexer.js').os2jscadLexer;
   const os2jscadParser =  require('./src/os2jscadParser.js').os2jscadParser;
+  const os2jscadPreprocessor =  require('./src/os2jscadPreprocessor.js').os2jscadPreprocessor;
   const os2jscadInterpreter =  require('./src/os2jscadInterpreter.js').os2jscadInterpreter;
   const getIncludeList = require("./src/getIncludeList.js").getIncludeList;
 
   const lexerInstance = new os2jscadLexer();
   const parserInstance = new os2jscadParser ([],allTokens);
+  const preprocessorInstance = new os2jscadPreprocessor();
   const interpreterInstance = new os2jscadInterpreter();
 
   commander
@@ -232,6 +231,8 @@ function os2jscadMain(argv) {
       annotateCST(cst);  // record the location of the starts of the nodes for error messages
       options.libName=libName
       //const ast = interpreterInstance.moduleDefinition(cst)
+      var signatureStack = preprocessorInstance.program(cst,options)
+      options.signatureStack = signatureStack;
       var result = interpreterInstance.program(cst,options)
 
       /* A Hack. In javascript a return statement must have and expression on the same line, it won't line wrap.

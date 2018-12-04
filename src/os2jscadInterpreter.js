@@ -18,14 +18,14 @@ const Logging = Utilities.Logging;
 //var $t=0,$fn=0,$fa=12,$fs=2,$preview=false,$vpr=[0,0,0],$vpt=[10,10,10],$vpd=50;
 
 
-  class os2jscadInterpreter {//extends BaseCstVisitor {
+  class os2jscadInterpreter { // extends BaseCstVisitor {
 
     constructor() {
         //super();                  //FIXME add this and the validator back in. (I'm not using visitor() so this may not be needed.)
 
         this.options;
         this.ctxTools= new CtxTools(this);
-        this.signatureStack = new SignatureStack();
+        this.signatureStack;
         // This helper will detect any missing or redundant methods on this visitor
         //FIXME Can this be reintroduced by passing in the parser and using call()?
         // Is this the only thing the parent is used for?
@@ -183,6 +183,7 @@ const Logging = Utilities.Logging;
 
     program(ctx,options) {
       this.options = options;
+      this.signatureStack = this.options.signatureStack || new SignatureStack();
 
       CommentTools.doComments(options.comments===true);
       var result = "";
@@ -364,6 +365,10 @@ const Logging = Utilities.Logging;
         result += ")"
       } else {
         result += this.ctxTools.iterate(ctx.children.action,sep);
+      }
+
+      if(result ==="") {
+        result += " nullCSG()";
       }
 
       return result;
