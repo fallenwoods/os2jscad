@@ -1,7 +1,11 @@
 Troubleshooting
 Cannot use 'in' operator to search for 'extrude2d' in undefined
-Cannot read property 'length' of undefined: return an empty value (or empty array?)
+
 <function> is not defined:    libraries are defined out of order.
+wrong arguments: The translator wrapped arguments in an object, but the openjscad code won't accept an object as an arg.
+  e.g translate(v=[1,2,3]) becomes translate ({v:[1,2,3]}) which is not allowed by openjscad
+Cannot read property 'length' of undefined: return an empty value (or empty array?) (comment after return w/o the rest of the statement.
+
 
 
 pathextrude       vector math
@@ -10,6 +14,7 @@ roboarm           import stl
 MarlinMesh        vector math
 flatSpring        centering of linear_extrusion
 mounting library  include arduino
+
 parametrix_involute_gear_v5.0
   bad if() echo in gear() (Fixed)
   2nd assign stmt in involute_gear() disappears (fixed)
@@ -19,43 +24,31 @@ parametrix_involute_gear_v5.0
   fn not defined (added it by hand to test)
   Renders, but looks nothing like the original. Not sure I feel like debugging it.
 
-celtix-knots
-	empty if did not insert nullCSG();
 
 libflat_springV1_3, MarlinMesh
   issue with var in front of return in forLoop
   Still has issues with squares not being centered.
-  
-gears
-  wrong arguments
+
   
 head-bashercurved
   minkowski
-  
-  nm_ringNoLogo (but not nm_ring)
-  comment in the return stmt in ring()
   
 pathextrude
   vector math
   libpathextrude.torusknot is not a function
   a var is set to the result of a function
   the functions are not 'lifted' because they are assigned to the base class for export.
-  
-ring nologo
-  comment after return
-  function definition order
-
-ring
-  function definition order
+ 
   
 parametric_involute_gear_v5.0
+  issue with var in front of return in forLoop
   Unexpected token )
+  Unexpected token var
   
-Spiral_HornB
-  animate is not a function
-  spiral_horn() did not have $h.setArguments() called for it.
-  
+GridPicture
+  include is not bringing in any data.
   
 
   
+
   

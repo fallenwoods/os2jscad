@@ -19,6 +19,11 @@ NOT HANDLED:
       Is there a wget for node, so that it need not be installed ( not default for windows)
 
   FIXME
+    Had a case where the assignments were done between the return and the actions
+      this comes from expressions like if() {{action}}
+    Need to export top level variables from libraries too
+      May need to decide to include them or not on the signature stack based on the use of include<> or use<>
+
 
 
     BIG ISSUE:

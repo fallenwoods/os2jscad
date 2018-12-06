@@ -136,7 +136,7 @@ const Logging = Utilities.Logging;
       var params = this.paramsParser(ctx.children.parameters)
       this.options.moduleName = functionName;
 
-      this.signatureStack.saveSignature(functionName,params,libName);
+      //this.signatureStack.saveSignature(functionName,params,libName); // this is now done in the preprocessor
 
       var result="";
       result += "\n"+CommentTools.addComments(ctx.children.FunctionLiteral,true);
@@ -160,7 +160,7 @@ const Logging = Utilities.Logging;
       var params = this.paramsParser(ctx.children.parameters)
       this.options.moduleName = moduleName;
 
-      this.signatureStack.saveSignature(moduleName,params,libName);
+      // this.signatureStack.saveSignature(moduleName,params,libName);  // this is now done in the preprocessor
 
       var result = "";
       result += "\n"+CommentTools.addComments(ctx.children.ModuleLiteral);
@@ -191,18 +191,21 @@ const Logging = Utilities.Logging;
       this.options.moduleName = libName;
       result += "\n"+CommentTools.addComments(ctx);
 
+      result += "var animate=0;\n"
+      result += "var fn=12;\n"
+
       result += libName + " = function () {\n";
       result += (options.includes ? 'include ("helpers.js");' : "") + "\n$h();\n"
 
       result += this.moduleBodyDeclarations(ctx,libName);  // This context actually is a moduleBody
 
-      result += "\n" + libName +".main = function (args){\n";
+      result += "\n" + libName +".libmain = function (args){\n";
       result += this.moduleBodyActions(ctx,"");
       result += "\n}\n";
 
       result += "}\n";
 
-      result += "function main(args) { " + libName +"();\n return "+ libName +".main(args);}"
+      result += "function main(args) { " + libName +"();\n return "+ libName +".libmain(args);}"
 
       return result;
     }
@@ -411,9 +414,11 @@ const Logging = Utilities.Logging;
 
 
       Logging.warnCheck(ctx,(funcName=="linear_extrude" && named.scale)," OpenJSCAD linear_extrude does not recognize the scale argument")
+      Logging.warnCheck(ctx,(funcName=="minkowski" && named.scale)," minkowski() is not supported")
       Logging.warnCheck(ctx,(funcName=="linear_extrude" && named.center)," OpenJSCAD linear_extrude will center in x,y,z rather than just z")
       Logging.warnCheck(ctx,(funcName=="text" && (named.font || named.valign || named.direction || named.language || named.script || named.fn)),"Conversion for text is limited. The following arguments are not supported: font, valign, direction, language, script and fn")
 
+      // HACK Alert: fixing some of the function names/arguments to allow them to function properly.
       funcName = funcName ==="echo" ? "echof" : funcName;
       if(funcName ==="circle") named.center = named.center ? named.center : true;
       if(funcName ==="cylinder" && (named.r2 && !named.r1)) {
@@ -506,6 +511,12 @@ const Logging = Utilities.Logging;
           for(var i =0; i < signature.defaults.length;i++){
             named[signature.names[i]] = named[signature.names[i]] == undefined ?  signature.defaults[i] : named[signature.names[i]] ;
           }
+        }
+
+        // HACK Alert: The code below is to fix 'simple' cases of single arguments being turned into an object
+        if(Object.keys(named).length===1 && result.length===0){
+          result.push(named[Object.keys(named)[0]]);
+          named ={};
         }
 
         // if both positional and named arguments were given, try to create just a named object from the module/function signature
