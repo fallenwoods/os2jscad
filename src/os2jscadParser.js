@@ -41,13 +41,8 @@ class  os2jscadParser extends Parser {
     const $ = this
 
     $.RULE("program", () => {
-      $.MANY(() => {
-        $.OR1([
-          {ALT: () =>{$.SUBRULE($.assignment); $.CONSUME1($t.Semicolon)}},
-          {ALT: () =>$.SUBRULE($.declaration)},
-          {ALT: () =>$.SUBRULE($.action)
-          }
-        ])
+      $.MANY(()=>{
+        $.SUBRULE($.statement)
       })
     })
 
@@ -68,61 +63,65 @@ class  os2jscadParser extends Parser {
       $.CONSUME($t.LParen);
       $.SUBRULE($.parameters,{LABEL:"parameters"});
       $.CONSUME($t.RParen);
-      $.SUBRULE($.moduleBody);
+      $.SUBRULE($.statement);
     });
 
-    $.RULE("moduleBody", () => {
-      $.OR([
-        {ALT: () => {
-          $.CONSUME($t.LBrace);
-          $.MANY(() => {
-            $.OR1([
-              {ALT: () =>{$.SUBRULE($.assignment); $.CONSUME1($t.Semicolon)}},
-              {ALT: () =>$.SUBRULE($.declaration)},
-              {ALT: () =>$.SUBRULE($.action)
-              }
-            ])
-          })
-          $.CONSUME($t.RBrace);
-        }},
-        {ALT: () =>{$.SUBRULE2($.assignment); $.CONSUME2($t.Semicolon)}},
-        {ALT: () =>$.SUBRULE2($.declaration)},
-        {ALT: () =>$.SUBRULE2($.functionChain)},
-      ])
+    $.RULE("moduleBlock", () => {
+      $.CONSUME($t.LBrace);
+      $.MANY(() => {
+        $.SUBRULE($.statement)
+      })
+      $.CONSUME($t.RBrace);
     });
+
+    $.RULE("statement", () => {
+      $.OR([
+        {ALT: () =>$.SUBRULE($.moduleBlock)},
+        {ALT: () =>$.SUBRULE($.declaration)},
+        {ALT: () =>{$.SUBRULE($.assignment);$.CONSUME($t.Semicolon)}}, // break this out from other actions so we can determine if a block needs a separate scope
+        {ALT: () =>$.SUBRULE($.simpleAction)},
+        //{ALT: () =>$.SUBRULE($.actionStatement)},
+      ]);
+    })
 
     $.RULE("declaration", () => {
       $.OR([
         {ALT: () => $.SUBRULE($.includeStmt)},  // this will be ignore everywhere but the top level scope
         {ALT: () => $.SUBRULE($.moduleDefinition)},
         {ALT: () => $.SUBRULE($.functionDefinition)},
-        {ALT: () => $.CONSUME3($t.Semicolon)},
       ])
     });
 
+    $.RULE("actionBlock", () => {
+      $.CONSUME($t.LBrace);
+      $.MANY(() => {
+        $.SUBRULE2($.actionStatement)
+      });
+      $.CONSUME($t.RBrace);
+    });
 
-    $.RULE("action", () => {
+    // This is a statement without declarations
+    $.RULE("actionStatement", () => {
       $.OR([
-        {ALT: () => {
-          $.CONSUME($t.LBrace);
-          $.MANY(() => {    // allow for empty braces
-            $.OR1([
-              {ALT: () =>$.SUBRULE($.action)},
-              {ALT: () => {$.SUBRULE($.assignment); $.CONSUME1($t.Semicolon)}}
-            ]);
-          });
-          $.CONSUME($t.RBrace);
-        }},
-        {ALT: () => $.SUBRULE($.functionChain)},
+        {ALT: () => $.SUBRULE2($.actionBlock)},
+        {ALT: () => $.SUBRULE2($.simpleAction)},
+        {ALT: () =>{$.SUBRULE($.assignment);$.CONSUME3($t.Semicolon)}},
+      ]);
+    });
+
+    $.RULE("simpleAction", () => {
+      $.OR([
+        {ALT: () => $.SUBRULE($.moduleChain)},
         {ALT: () => $.SUBRULE($.ifStatement)},
         {ALT: () => $.SUBRULE($.forLoop)},
         {ALT: () => $.SUBRULE($.CSGAction)},
         {ALT: () => $.SUBRULE($.letStmt)},
-
+        {ALT: () => $.CONSUME3($t.Semicolon)},
+        //{ALT: () => $.SUBRULE($.assignment)},
       ])
-    });
+    })
 
-    $.RULE("functionChain", () => {
+    $.RULE("moduleChain", () => {
       $.OPTION(() => {
         $.SUBRULE($.debugModifier);
       })
@@ -133,8 +132,8 @@ class  os2jscadParser extends Parser {
           $.SUBRULE($.arguments,{LABEL:"arguments"});
           $.CONSUME($t.RParen);
           $.OR1([
-            {ALT: () => $.SUBRULE($.action)},
-            {ALT: () => $.CONSUME($t.Semicolon)}
+            {ALT: () => $.SUBRULE($.actionStatement)},
+            //{ALT: () => $.SUBRULE($.simpleAction)}
           ])
         }},
 
@@ -167,7 +166,7 @@ class  os2jscadParser extends Parser {
       $.CONSUME($t.LParen);
       $.SUBRULE($.arguments);
       $.CONSUME($t.RParen);
-      $.SUBRULE($.action);
+      $.SUBRULE($.actionStatement);
     });
 
 
@@ -175,7 +174,7 @@ class  os2jscadParser extends Parser {
       $.CONSUME($t.CSGLiteral);
       $.CONSUME($t.LParen);
       $.CONSUME($t.RParen);
-      $.SUBRULE1($.action);
+      $.SUBRULE1($.actionStatement);
     });
 
 
@@ -397,7 +396,7 @@ class  os2jscadParser extends Parser {
           }
       });
       $.CONSUME($t.RParen);
-      $.SUBRULE($.action);
+      $.SUBRULE($.actionStatement);
     });
 
 
@@ -446,10 +445,10 @@ class  os2jscadParser extends Parser {
       $.CONSUME($t.LParen);
       $.SUBRULE($.expression);
       $.CONSUME($t.RParen);
-      $.SUBRULE($.action,{LABEL:"ifClause"});
+      $.SUBRULE($.actionStatement,{LABEL:"ifClause"});
       $.OPTION(() => {
         $.CONSUME($t.ElseLiteral);
-        $.SUBRULE2($.action,{LABEL:"elseClause"});
+        $.SUBRULE2($.actionStatement,{LABEL:"elseClause"});
       });
     });
 

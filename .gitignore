@@ -7,5 +7,7 @@ node_modules/
 package-lock.json
 examples/*.js
 examples/*.jscad
+examples/sample.scad
+**/stubsOutput.js
 tests/*.js
 tests/*/*.js

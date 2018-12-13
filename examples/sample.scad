@@ -1,30 +1,11 @@
-module test_double_helix_gear (
-	teeth=17,
-	circles=8)
-{
-	//double helical gear
-	{
-		twist=200;
-		height=20;
-		pressure_angle=30;
+translate([-30,0,0]) ;
+translate([-30,0,0]) {};
+translate([-30,0,0]) difference() sphere();
+translate([-30,10,0]) difference(){sphere();cube();}
+translate([-30,20,0]) difference(){a=1; sphere();cube();}
 
-		gear ();
-		mirror([0,0,1])
-		gear ();
-	}
-}
-
-if(true)
-{
-	//double helical gear
-    a=1;
-	{
-		twist=200;
-		height=20;
-		pressure_angle=30;
-
-		gear ();
-		mirror([0,0,1])
-		gear ();
-	}
-}
+union() ;
+union() {}
+union()sphere();cube();
+union(){sphere();cube();}
+union(){a=1;sphere();cube();}

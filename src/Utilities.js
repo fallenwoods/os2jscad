@@ -114,7 +114,7 @@ class CtxTools {
     }
     static trySkipArray(ctx){ return ctx = Array.isArray(ctx) ? ctx[0] : ctx;}
 
-    iterateChildren(ctx,childNames) {
+    iterateChildren(ctx,childNames,args) {
       var result="";
       var done=false;
       ctx = CtxTools.trySkipArray(ctx);
@@ -124,7 +124,7 @@ class CtxTools {
        done=true;
         childNames.forEach((childName)=>{
           if(ctx.children[childName] && ctx.children[childName][i]) {
-            result += this.childToString(ctx.children[childName][i]);
+            result += this.childToString(ctx.children[childName][i],args);
             done = false;
           }
         })
@@ -133,13 +133,14 @@ class CtxTools {
       return result;
     }
 
-    iterate(ctx,sep){
+    iterate(ctx,args){
+        var sep = args.sep;
       var result ="";
       if(!ctx) return "";
       for(var i = 0; i < ctx.length; i++){
         var elem = ctx[i];
 
-        var subResult =  this.childToString(elem) //this[elem.name](elem);
+        var subResult =  this.childToString(elem,args) //this[elem.name](elem);
         if(subResult !== ""){
           result +=  subResult + (sep ? sep : "");
         }
@@ -150,7 +151,7 @@ class CtxTools {
 
 
 
-    childToString(ctx){
+    childToString(ctx,args){
       if(!ctx) return "";
       var result="";
       var comments = "";
@@ -164,10 +165,11 @@ class CtxTools {
           (ctx.image==="PI") ? "Math.PI" :
           ctx.image;
       } else if (ctx.name && this.interpreter[ctx.name]){
-        result += this.interpreter[ctx.name](ctx);
+        result += this.interpreter[ctx.name](ctx,args);
       }
       return result;
     }
+
 }
 
 class Logging {
@@ -181,14 +183,49 @@ class Logging {
     static warnCheck(ctx,condition,msg){ Logging.logCheck(ctx,condition,msg,'WARNING')}
 
 }
+class Utils {
+    static clone(obj){
+        return Object.assign({},obj);
+    }
+
+    static formatActionStmtNoWrap(actionStmtObj,csgType){
+        var result="";
+        csgType = csgType || "union";
+
+        actionStmtObj.declarations.forEach((dec)=>{result += dec + ";\n"})
+
+        result += "return " + (actionStmtObj.actions.length>1 ? csgType + " (" : "  ");
+        actionStmtObj.actions.forEach((dec)=>{result += dec + ",\n"})
+        result = result.slice(0,-2);  // remove trailing comma
+        result += (actionStmtObj.actions.length>1 ? ");" : actionStmtObj.actions.length>0 ? ";" : "nullCSG();");
+
+        return result;
+    }
+    static formatActionStmtFullWrap(actionStmtObj,csgType){
+        var result="";
+        csgType = csgType || "union";
+        var wrap = actionStmtObj.declarations.length>0
+
+        result += wrap ? "((()=>{" : "";
+        actionStmtObj.declarations.forEach((dec)=>{result += dec + ";\n"})
+
+        result += (wrap ? "return " : "") + (actionStmtObj.actions.length>1 ? csgType + " (" : "");
+        actionStmtObj.actions.forEach((dec)=>{result += dec + ",\n"})
+        result = result.slice(0,-2);  // remove trailing comma
+        result += (actionStmtObj.actions.length>1 ? ")" : "");
+        result += wrap ? "})())" : "";
+
+        return result;
+    }
+}
 
 module.exports = {
 
     SignatureStack: SignatureStack,     //Instantiable
     OptionsStack: OptionsStack,         //Instantiable
 
-    CtxTools: CtxTools,
+    CtxTools:   CtxTools,
     CommentTools: CommentTools,
-    Logging:  Logging,
-  }
+    Logging:    Logging,
+    Utils:      Utils  }
 

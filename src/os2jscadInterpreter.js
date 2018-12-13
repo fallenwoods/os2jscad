@@ -8,6 +8,7 @@ const SignatureStack = Utilities.SignatureStack;
 const CtxTools = Utilities.CtxTools;
 const CommentTools = Utilities.CommentTools;
 const Logging = Utilities.Logging;
+const Utils = Utilities.Utils;
 
 
 /*=============================================================================================*\
@@ -23,7 +24,7 @@ const Logging = Utilities.Logging;
     constructor() {
         //super();                  //FIXME add this and the validator back in. (I'm not using visitor() so this may not be needed.)
 
-        this.options;
+        //this.options;
         this.ctxTools= new CtxTools(this);
         this.signatureStack;
         // This helper will detect any missing or redundant methods on this visitor
@@ -32,14 +33,16 @@ const Logging = Utilities.Logging;
         //this.validateVisitor()
     }
 
-    array(ctx) {
+    array(ctx,args) {
       var result="";
 
+      args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
+      args.sep=", ";
       if(ctx.children.sep && ctx.children.sep[0].image ==":") {
-         result =  "$h.range(" +  this.ctxTools.iterate(ctx.children.item,",") + ")"
+         result =  "$h.range(" +  this.ctxTools.iterate(ctx.children.item,args) + ")"
       } else {
         result =  "["+
-          this.ctxTools.iterate(ctx.children.item,",") +
+          this.ctxTools.iterate(ctx.children.item,args) +
         "]";
       }
 
@@ -47,36 +50,36 @@ const Logging = Utilities.Logging;
       return result;
     }
 
-    arrayLookup(ctx) {
+    arrayLookup(ctx,args) {
       return "" +
-        this.ctxTools.iterateChildren(ctx,["LSquare","expression","RSquare"]);
+        this.ctxTools.iterateChildren(ctx,["LSquare","expression","RSquare"],args);
     }
 
-    assignment(ctx) {
+    assignment(ctx,args) {
       var result = "";
       result += CommentTools.addComments(ctx.children.lhs,true)
-      var found = this.signatureStack.isVarInSignature(this.options.moduleName,ctx.children.lhs[0].image)
-      result += (found ? "": "var ") + this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"]) + ";";
+      var found = this.signatureStack.isVarInSignature(args.moduleName,ctx.children.lhs[0].image)
+      result += (found ? "": "var ") + this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"],args);
       return result;
     }
 
 
 
-    atomicExpression(ctx) {
+    atomicExpression(ctx,args) {
       var result="";
       for(var prop in ctx.children){
         switch(prop){
           case "functionCall":
-            result += this.ctxTools.childToString(ctx.children.functionCall);
+            result += this.ctxTools.childToString(ctx.children.functionCall,args);
           break;
           case "arrayLookup":
-            result += this.ctxTools.iterate(ctx.children.arrayLookup);
+            result += this.ctxTools.iterate(ctx.children.arrayLookup,args);
           break;
           case "LSquare":
           case "RSquare":
           break;
           default:
-            result += this.ctxTools.childToString(ctx.children[prop])
+            result += this.ctxTools.childToString(ctx.children[prop],args)
           break;
         }
       }
@@ -85,56 +88,57 @@ const Logging = Utilities.Logging;
     }
 
 
-    binaryCompareExpression(ctx) { return this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"]);}
-    binaryBoolExpression(ctx) { return this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"]);}
+    binaryCompareExpression(ctx,args) { return this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"],args);}
+    binaryBoolExpression(ctx,args) { return this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"],args);}
 
-    binaryMultDivExpression(ctx) {
+    binaryMultDivExpression(ctx,args) {
       var result = "";
       /*
       if(ctx.children.operator){
         result = (ctx.children.operator[0].image === "*" ? "mult(" : "div(") +
-        this.ctxTools.childToString(ctx.children.lhs) +
+        this.ctxTools.childToString(ctx.children.lhs,args) +
         ","+
-        this.ctxTools.childToString(ctx.children.rhs) +
+        this.ctxTools.childToString(ctx.children.rhs,args) +
         ")";
       } else */
        {
-        result = this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"]);
+        result = this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"],args);
       }
       return result;
     }
 
-    binarySumDiffExpression(ctx) {
+    binarySumDiffExpression(ctx,args) {
       var result = "";
       /*
       if(ctx.children.operator){
         result = (ctx.children.operator[0].image === "+" ? "add(" : "diff(") +
-        this.ctxTools.childToString(ctx.children.lhs) +
+        this.ctxTools.childToString(ctx.children.lhs,args) +
         ","+
-        this.ctxTools.childToString(ctx.children.rhs)+
+        this.ctxTools.childToString(ctx.children.rhs,args)+
         ")";
       } else  */
       {
-        result = this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"])
+        result = this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"],args)
       }
       return result;
     }
 
-    unaryExpression(ctx) {
-      return this.ctxTools.iterateChildren(ctx,["operator","rhs"]);
+    unaryExpression(ctx,args) {
+      return this.ctxTools.iterateChildren(ctx,["operator","rhs"],args);
     }
 
 
-    conditionalExpression(ctx) {
-      return this.ctxTools.iterateChildren(ctx,["condition","Questionmark","trueclause","Colon","falseclause"]);}
+    conditionalExpression(ctx,args) {
+      return this.ctxTools.iterateChildren(ctx,["condition","Questionmark","trueclause","Colon","falseclause"],args);}
 
-    expression(ctx) { return this.ctxTools.childToString(
-      ctx.children.conditionalExpression);}
+    expression(ctx,args) { return this.ctxTools.childToString(ctx.children.conditionalExpression,args);}
 
-    functionDefinition(ctx,libName) {
+    functionDefinition(ctx,args) {
       var functionName = ctx.children.Identifier[0].image;
-      var params = this.paramsParser(ctx.children.parameters)
-      this.options.moduleName = functionName;
+      var params = this.paramsParser(ctx.children.parameters,args)
+      var libName = (args && args.libName) ? args.libName : "";
+      args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
+      args.functionName = functionName;
 
       //this.signatureStack.saveSignature(functionName,params,libName); // this is now done in the preprocessor
 
@@ -149,16 +153,18 @@ const Logging = Utilities.Logging;
       result += "{ "
       result += params.defaults;
       result += "\n"+CommentTools.addComments(ctx.children.body,true);
-      result += "return (" + this.ctxTools.childToString(ctx.children.body) + ");"
+      result += "return (" + this.ctxTools.childToString(ctx.children.body,args) + ");"
       result += "}\n"
 
         return result;
     }
 
-    moduleDefinition(ctx,libName) {
+    moduleDefinition(ctx,args) {
       var moduleName = ctx.children.Identifier[0].image;
-      var params = this.paramsParser(ctx.children.parameters)
-      this.options.moduleName = moduleName;
+      var params = this.paramsParser(ctx.children.parameters,args)
+      var libName = (args && args.libName) ? args.libName : "";
+      args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
+      args.moduleName = moduleName;
 
       // this.signatureStack.saveSignature(moduleName,params,libName);  // this is now done in the preprocessor
 
@@ -172,98 +178,103 @@ const Logging = Utilities.Logging;
       }
 
 
+      args.unwrap = true;
       result += " ( " + params.vars + ") ";
       result += "{ "
-      result += params.defaults;
-      result += this.ctxTools.childToString(ctx.children.moduleBody,"");
+
+      var subresult = this.moduleBlock(ctx,args) ;  // treat a program like a module block
+
+      result += Utils.formatActionStmtNoWrap(subresult);
+
       result += "}\n";
 
       return result;
     }
 
-    program(ctx,options) {
-      this.options = options;
-      this.signatureStack = this.options.signatureStack || new SignatureStack();
+    program(ctx,args) {
+      //this.options = options;
+      this.signatureStack = args.signatureStack || new SignatureStack();
 
-      CommentTools.doComments(options.comments===true);
+      CommentTools.doComments(args.comments===true);
       var result = "";
-      var libName = this.options.libName;
-      this.options.moduleName = libName;
-      result += "\n"+CommentTools.addComments(ctx);
+      var libName = args.libName;  //args.libName;
+      args.moduleName = libName;
+      args.csgType="union";
+      result += "\n"+CommentTools.addComments(ctx,args);
 
       result += "var animate=0;\n"
       result += "var fn=12;\n"
 
       result += libName + " = function () {\n";
-      result += (options.includes ? 'include ("helpers.js");' : "") + "\n$h();\n"
+      result += (args.includes ? 'include ("helpers.js");' : "") + "\n$h();\n"
 
-      result += this.moduleBodyDeclarations(ctx,libName);  // This context actually is a moduleBody
+      args.sep="; ";
+      //args.isActions=false;
+      //result += this.ctxTools.iterate(ctx.children.statement,args);
 
       result += "\n" + libName +".libmain = function (args){\n";
-      result += this.moduleBodyActions(ctx,"");
-      result += "\n}\n";
 
-      result += "}\n";
+      var subresult = this.moduleBlock(ctx,args) ;  // treat a program like a module block
+
+     result += Utils.formatActionStmtNoWrap(subresult);
+
+
+      result += "}\n}\n";
 
       result += "function main(args) { " + libName +"();\n return "+ libName +".libmain(args);}"
 
       return result;
     }
 
-    moduleBody(ctx) {
-      var result = "";
 
-      result += this.moduleBodyDeclarations(ctx);
-      result += this.moduleBodyActions(ctx);
+    moduleBlock(ctx,args) {
+      var result = {declarations:[],actions:[]};
 
-      return result;
-
-    }
-
-    moduleBodyDeclarations(ctx,libName) {
-      var result ="";
-
-      if(ctx.children.declaration){
-        ctx.children.declaration.forEach((elem)=>{
-          result +=  this.declaration(elem,libName);
-        })
-      }
-
-      result +=  this.ctxTools.iterate(ctx.children.assignment);
-
-      return result;
-    }
-    moduleBodyActions(ctx) {
-      var result ="";
-
-      if(ctx.children.action) {
-        if(ctx.children.action.length > 1){
-          result += "return union ("
-          result +=  this.ctxTools.iterate(ctx.children.action,", ");
-          result += ")"
-        } else {
-          result += CommentTools.addComments(ctx.children.action);
-          result +=  "return " + this.ctxTools.iterate(ctx.children.action,", ");
-        }
-      } else {
-        result += "return nullCSG();"
-      }
-
+      if (ctx.children.statement === undefined) {
+        result.actions.push("nullCSG()")
         return result;
+      }
+
+      ctx.children.statement.forEach((stmt)=>{
+        var subresult = this.statement(stmt,args);
+        result.declarations = result.declarations.concat(subresult.declarations);
+        result.actions = result.actions.concat(subresult.actions);
+      })
+
+      return result;
     }
 
 
-    paramsParser(ctx){
+    statement(ctx,args) {
+      var result = {declarations:[],actions:[]};
+
+      result.declarations.push(this.ctxTools.childToString(ctx.children.assignment,args))
+      result.declarations.push(this.ctxTools.childToString(ctx.children.declaration,args))
+      result.actions.push(this.ctxTools.childToString(ctx.children.simpleAction,args))
+
+      if(ctx.children.moduleBlock) {
+        var subresult = this.moduleBlock(ctx.children.moduleBlock[0],args); // braced regions within braces don't actually create a new scope
+        result.declarations = result.declarations.concat(subresult.declarations);
+        result.actions = result.actions.concat(subresult.actions);
+      }
+      result.declarations = result.declarations.filter((elem)=>elem!="")
+      result.actions = result.actions.filter((elem)=>elem!="")
+
+      return result;
+
+    }
+
+    paramsParser(ctx,args){
       var names = "";
       var defaults = "";
       var vars="";
       var hasDefaults = false;
-      ctx = CtxTools.trySkipArray(ctx);
+      ctx = CtxTools.trySkipArray(ctx,args);
 
       if(!ctx.children.parameter) return {vars:"",defaults:""}
 
       for(var i = 0;i<ctx.children.parameter.length;i++){
-        var param = this.paramParser(ctx.children.parameter[i]);
+        var param = this.paramParser(ctx.children.parameter[i],args);
         names += "'"+param.key+"', ";
         vars += param.key+", ";
         defaults += param.value+", ";
@@ -279,18 +290,18 @@ const Logging = Utilities.Logging;
       return {vars:vars,defaults:defaults};
     }
 
-    paramParser(ctx){
+    paramParser(ctx,args){
       var key = ctx.children.paramName ? ctx.children.paramName[0].image : "$value";
-      var value = ctx.children.default ? this.ctxTools.childToString(ctx.children.default) : undefined;
+      var value = ctx.children.default ? this.ctxTools.childToString(ctx.children.default,args) : undefined;
 
       return({key:key,value:value});
     }
 
 
-    includeStmt (ctx) {
+    includeStmt (ctx,args) {
       var result="";
 
-      var filePath = ctx.children.IncludeFile[0].image.slice(1,-1).replace(".scad","."+this.options.fileExtension); //FIXME - path here?
+      var filePath = ctx.children.IncludeFile[0].image.slice(1,-1).replace(".scad","."+args.fileExtension); //FIXME - path here?
       var fileBase = path.basename(filePath);
 
       result +=  CommentTools.addComments(ctx.children.IncludeLiteral,true);
@@ -299,80 +310,89 @@ const Logging = Utilities.Logging;
       return result;
     }
 
-    letStmt(ctx) {
+    letStmt(ctx,args) {
       var result = "";
+      var lets=[];
 
-      result += "((()=>{ \n"
-
-      var args = this.argumentsParser(ctx.children.arguments)[0];
-
+      var args = this.argumentsParser(ctx.children.arguments,args)[0];
       for(var prop in args){
-        var found = false;//  = this.trySaveVariable(prop);
-        result += (found ? "" : "let ") + prop + " = " + args[prop] + ";\n";
+        lets.push("var " + prop + " = " + args[prop]);
       }
 
-      result += this.actionAssigns(ctx.children.action[0]);
-      result += CommentTools.addComments(ctx.children.action);
-      result += "return " + this.actionActions(ctx.children.action[0]) +";";
+      var subresult = this.actionStatement(ctx.children.actionStatement[0],args);
 
+      subresult.declarations = lets.concat(subresult.declarations);
 
-      result += "})()) \n"
-
+      result += Utils.formatActionStmtFullWrap(subresult);
 
       return result;
     }
 
-    declaration(ctx,libName) {
+    declaration(ctx,args) {
       var result="";
 
-      result += this.ctxTools.childToString(ctx.children.includeStmt);
-      if(ctx.children.moduleDefinition) result += this.moduleDefinition(ctx.children.moduleDefinition[0],libName);
-      if(ctx.children.functionDefinition) result += this.functionDefinition(ctx.children.functionDefinition[0],libName);
+      result += this.ctxTools.childToString(ctx.children.includeStmt,args);
+      if(ctx.children.moduleDefinition) result += this.moduleDefinition(ctx.children.moduleDefinition[0],args);
+      if(ctx.children.functionDefinition) result += this.functionDefinition(ctx.children.functionDefinition[0],args);
 
       return result;
     }
 
-    action(ctx,sep){
-      var result = "";
-      result += this.actionAssigns(ctx,sep);
-      result += this.actionActions(ctx,sep);
+    actionBlock(ctx,args) {
+      var result = {declarations:[],actions:[]};
 
-      return result;
-    }
-
-    actionAssigns(ctx,sep) {
-      var result = "";
-      sep = sep || ", ";
-
-      result += this.ctxTools.iterate(ctx.children.assignment,"");
-
-      return result;
-    }
-    actionActions(ctx,sep,csgType) {
-      var result = "";
-      sep = sep || ", ";
-
-      result += this.ctxTools.childToString(ctx.children.ifStatement);
-      result += this.ctxTools.childToString(ctx.children.forLoop);
-      result += this.ctxTools.childToString(ctx.children.functionChain);
-      result += this.ctxTools.childToString(ctx.children.CSGAction);
-      result += this.ctxTools.childToString(ctx.children.letStmt);
-
-
-      // NOTE: expressions like difference() cube(); are equivalent to difference(cube()) which is in turn equivalent to cube();
-      //  So in cases like this the expression is translated to remove the CSGAction e.g. no difference() in the example.
-      if((ctx.children.action && ctx.children.action.length > 1)){
-        csgType = csgType || "union";
-        result += csgType + " ( "
-        result += this.ctxTools.iterate(ctx.children.action,sep);
-        result += ")"
-      } else {
-        result += this.ctxTools.iterate(ctx.children.action,sep);
+      if (ctx.children.actionStatement === undefined) {
+        result.actions.push("nullCSG()")
+        return result;
       }
+
+      ctx.children.actionStatement.forEach((stmt)=>{
+        var subresult = this.actionStatement(stmt,args);
+        result.declarations = result.declarations.concat(subresult.declarations);
+        result.actions = result.actions.concat(subresult.actions);
+      })
+
+      return result;
+    }
+
+
+    actionStatement(ctx,args) {
+      var result = {declarations:[],actions:[]};
+
+      result.declarations.push(this.ctxTools.childToString(ctx.children.assignment,args))
+      result.actions.push(this.ctxTools.childToString(ctx.children.simpleAction,args))
+
+      if(ctx.children.actionBlock) {
+        var subresult = this.actionBlock(ctx.children.actionBlock[0],args); // braced regions within braces don't actually create a new scope
+        result.declarations = result.declarations.concat(subresult.declarations);
+        result.actions = result.actions.concat(subresult.actions);
+      }
+      result.declarations = result.declarations.filter((elem)=>elem!="")
+      result.actions = result.actions.filter((elem)=>elem!="")
+
+      return result;
+
+    }
+
+
+    simpleAction(ctx,args) {
+      var result = "";
+      args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
+      args.sep = args.sep || ", ";
+
+
+
+      result += this.ctxTools.childToString(ctx.children.ifStatement,args);
+      result += this.ctxTools.childToString(ctx.children.forLoop,args);
+      result += this.ctxTools.childToString(ctx.children.moduleChain,args);
+      result += this.ctxTools.childToString(ctx.children.CSGAction,args);
+      result += this.ctxTools.childToString(ctx.children.letStmt,args);
+
 
       if(result ==="") {
         result += " nullCSG()";
       }
+
 
       return result;
     }
@@ -381,36 +401,27 @@ const Logging = Utilities.Logging;
     // For things line union(){} intersection etc.
     // difference(){a=1;sphere();cube();}
     // ((()=>{a=1; return difference(sphere(),cube())})())
-    CSGAction(ctx) {
+    CSGAction(ctx,args) {
       var result="";
 
-      var assigns = this.actionAssigns(ctx.children.action[0])
-      var csgType = ctx.children.CSGLiteral[0].image;
+      var subresult = this.actionStatement(ctx.children.actionStatement[0],args);
 
-      if(assigns != "") {
-        result += "((()=>{"
-
-        result += assigns;
-        result += CommentTools.addComments(ctx.children.action);
-        result += "return " + this.actionActions(ctx.children.action[0],", ",csgType);
-
-        result += "})()) ";
-
-      } else {
-        result += this.actionActions(ctx.children.action[0],", ",csgType) ;
-      }
+      result += Utils.formatActionStmtFullWrap(subresult,ctx.children.CSGLiteral[0].image);
 
       return result;
     }
 
-    functionChain(ctx) {
+    moduleChain(ctx,args) {
       var result = "";
+      args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
+
       var funcName = ctx.children.Identifier[0].image;
 
       var signature = this.signatureStack.getSignature(funcName);
-      var args = this.argumentsParser(ctx.children.arguments,signature);
-      var named = args.slice(-1)[0] || {};
-      args = args.slice(0,-1);
+      args.signature = signature;
+      var funcArgs = this.argumentsParser(ctx.children.arguments,args);
+      var named = funcArgs.slice(-1)[0] || {};
+      funcArgs = funcArgs.slice(0,-1);
 
 
       Logging.warnCheck(ctx,(funcName=="linear_extrude" && named.scale)," OpenJSCAD linear_extrude does not recognize the scale argument")
@@ -428,9 +439,9 @@ const Logging = Utilities.Logging;
       // There is no available import in jscad, the code below assumes that the import file has been pre-processed into
       //  a jscad .js file and is available in the target import directory
       if(funcName === "import" || funcName === "import_dxf" || funcName === "import_stl"){
-        var fileName = named.file || args[0];
-        var convexity = named.convexity || args[1];
-        var layer = named.layer || args[2];
+        var fileName = named.file || funcArgs[0];
+        var convexity = named.convexity || funcArgs[1];
+        var layer = named.layer || funcArgs[2];
         funcName = fileName.replace(/\./g,"_").slice(1,-1);
         fileName = fileName.replace(/\.(dxf|stl)/,"_$1.js");
 
@@ -439,16 +450,14 @@ const Logging = Utilities.Logging;
       } else {
         result +=  " " + ((signature && signature.libName) ? signature.libName+"." : "") + funcName
         result +=   "(  ";
-        result +=  args.length ? args.toString() +", "  :"";
+        result +=  funcArgs.length ? funcArgs.toString() +", "  :"";
         result +=  Object.keys(named).length>0 ?  "{"+Object.keys(named).reduce((acc,key)=>{return acc +( key + ":" + named[key]+",")},"").slice(0,-1) +"}, " :"";
 
-        var action =  this.ctxTools.iterate(ctx.children.action,", ") ;
 
-        if(action !== ""){
-          result += action;
-        } else {
-          result = result.slice(0,-2);
-        }
+        // FIXME - This adds a nullCSG() to translate() correctly, but also adds it to sphere() i.e. sphere(r=3,nullCSG())
+        var subresult = this.actionStatement(ctx.children.actionStatement[0],args);
+
+        result += Utils.formatActionStmtFullWrap(subresult);
 
         result +=   ")  ";
       }
@@ -457,18 +466,21 @@ const Logging = Utilities.Logging;
 
     }
 
-    functionCall(ctx) {
+    functionCall(ctx,args) {
       var result = "";
+      args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
+
       var funcName = ctx.children.Identifier[0].image;
 
       var signature = this.signatureStack.getSignature(funcName);
-      var args = this.argumentsParser(ctx.children.arguments,signature);
-      var named = args.slice(-1)[0] || {};
-      args = args.slice(0,-1);
+      args.signature = signature;
+      var funcArgs = this.argumentsParser(ctx.children.arguments,args);
+      var named = funcArgs.slice(-1)[0] || {};
+      funcArgs = funcArgs.slice(0,-1);
 
       result +=  " " + ((signature && signature.libName) ? signature.libName+"." : "") + funcName
       result +=   "(  ";
-      result +=  args.length ? args.toString() +", "  :"";
+      result +=  funcArgs.length ? funcArgs.toString() +", "  :"";
       result +=  Object.keys(named).length>0 ?  "{"+Object.keys(named).reduce((acc,key)=>{return acc +( key + ":" + named[key]+",")},"").slice(0,-1) +"}, " :"";
 
       result = result.slice(0,-2);
@@ -480,22 +492,22 @@ const Logging = Utilities.Logging;
 
     }
 
-    parenthesisExpression(ctx) { return this.ctxTools.iterateChildren(ctx,["LParen","expression","RParen"]);}
-    parameters(ctx) { return this.ctxTools.childToString(ctx);}
-    parameter(ctx) { return this.ctxTools.childToString(ctx);}
-    debugModifier(ctx) {
-      return this.ctxTools.childToString(ctx.children.Hash);}
+    parenthesisExpression(ctx,args) { return this.ctxTools.iterateChildren(ctx,["LParen","expression","RParen"],args);}
+    parameters(ctx,args) { return this.ctxTools.childToString(ctx,args);}
+    parameter(ctx,args) { return this.ctxTools.childToString(ctx,args);}
+    debugModifier(ctx,args) {return this.ctxTools.childToString(ctx.children.Hash,args);}
 
 
     // e.g. (a,2,var1,param=3)
-    argumentsParser(ctx,signature){
+    argumentsParser(ctx,args){
       var result = [];
       var named = {};
-      ctx = CtxTools.trySkipArray(ctx);
+      var signature = args.signature;
+      ctx = CtxTools.trySkipArray(ctx,args);
 
       if(ctx.children.argument ) {
         for(var i = 0;i<ctx.children.argument.length;i++){
-          var param = this.argumentParser(ctx.children.argument[i]);
+          var param = this.argumentParser(ctx.children.argument[i],args);
           if(param.name) {
             //named.$named=true;
             named[param.name]=param.value;
@@ -539,14 +551,14 @@ const Logging = Utilities.Logging;
       return result;
     }
 
-    argumentParser(ctx){
-      var name = ctx.children.paramName ? this.ctxTools.childToString(ctx.children.paramName) : undefined;
-      var value = ctx.children.value ? this.ctxTools.childToString(ctx.children.value) : "";
+    argumentParser(ctx,args){
+      var name = ctx.children.paramName ? this.ctxTools.childToString(ctx.children.paramName,args) : undefined;
+      var value = ctx.children.value ? this.ctxTools.childToString(ctx.children.value,args) : "";
 
       return({name:name,value:value});
     }
 
-    arguments(ctx) {
+    arguments(ctx,args) {
       var result="";
       var positional="";
       var named="";
@@ -554,7 +566,7 @@ const Logging = Utilities.Logging;
       if( ctx.children.argument){
 
         ctx.children.argument.forEach((elem)=>{
-          var arg = this.argument(elem);
+          var arg = this.argument(elem,args);
           positional +=    arg.indexOf(":")>=0   ? "" : arg+",";
           named      += (!(arg.indexOf(":")>=0)) ? "" : arg+",";
         })
@@ -570,35 +582,37 @@ const Logging = Utilities.Logging;
         return "";
       }
     }
-    argument(ctx) {
+    argument(ctx,args) {
       var result = "";
 
       if(ctx.children.EqualSign){
         result += CommentTools.addComments(ctx.children.paramName[0]) +":";
       }
 
-      result += this.ctxTools.childToString(ctx.children.value);
+      result += this.ctxTools.childToString(ctx.children.value,args);
       return result;
     }
 
-    ifStatement(ctx) {
+    ifStatement(ctx,args) {
       var result = ""
+      args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
 
       result += "$h.ifFunc(";
 
-      result += "("+this.ctxTools.childToString(ctx.children.expression) +")";
+      result += "("+this.ctxTools.childToString(ctx.children.expression,args) +")";
 
+      args.unwrap = true;
       result += ",()=>{";
-      result +=  this.actionAssigns(ctx.children.ifClause[0]);
-      result += CommentTools.addComments(ctx.children.ifClause,true);
-      result +=  "return " + this.actionActions(ctx.children.ifClause[0]);
+
+      var subresult = this.actionStatement(ctx.children.ifClause[0],args);
+      result += Utils.formatActionStmtNoWrap(subresult);
+
       result += "}";
 
       if(ctx.children.elseClause){
         result += ",()=>{";
-        result +=  this.actionAssigns(ctx.children.elseClause[0]);
-        result += CommentTools.addComments(ctx.children.elseClause,true);
-        result +=  "return " + this.actionActions(ctx.children.elseClause[0]);
+        var subresult = this.actionStatement(ctx.children.elseClause[0],args);
+        result += Utils.formatActionStmtNoWrap(subresult);
         result += "}";
       }
 
@@ -607,9 +621,9 @@ const Logging = Utilities.Logging;
       return result;
     }
 
-    listComprehension(ctx) {
+    listComprehension(ctx,args) {
       var result="";
-      var ranges = ctx.children.ranges.map((range)=>this.forRange(range))
+      var ranges = ctx.children.ranges.map((range)=>this.forRange(range,args))
 
       result += "$h.forLoop(";
 
@@ -619,7 +633,7 @@ const Logging = Utilities.Logging;
       result += ",(";
       result += ranges.reduce((acc,range)=>acc+=range.name+",","").slice(0,-1)
       result += ")=>("
-      result += this.ctxTools.childToString(ctx.children.ifExpression)
+      result += this.ctxTools.childToString(ctx.children.ifExpression,args)
       result +=")"
      }
      result += ",(elem)=>{\nlet ["
@@ -628,7 +642,7 @@ const Logging = Utilities.Logging;
      result += "]=elem;\n"
 
       if(ctx.children.LetLiteral){
-        var args = this.argumentsParser(ctx.children.arguments)[0];
+        var args = this.argumentsParser(ctx.children.arguments,args)[0];
 
         //result += "{";
         for(var prop in args){
@@ -637,7 +651,7 @@ const Logging = Utilities.Logging;
         }
       };
       result += CommentTools.addComments(ctx.children.body,true);
-      result += "return (" + this.ctxTools.childToString(ctx.children.body) + ");"; // expression
+      result += "return (" + this.ctxTools.childToString(ctx.children.body,args) + ");"; // expression
 
       result += "})";
 
@@ -646,10 +660,12 @@ const Logging = Utilities.Logging;
 
 
     //union($h.forLoop($h.range(0, 10, 30),(elem) => {func})
-    forLoop(ctx) {
+    forLoop(ctx,args) {
 
         var result="";
-        var ranges = ctx.children.ranges.map((range)=>this.forRange(range))
+        args = Utils.clone(args);
+
+        var ranges = ctx.children.ranges.map((range)=>this.forRange(range,args))
 
         result += "union($h.forLoop(";
         result += ranges.reduce((acc,range)=>acc+=range.arg+",","").slice(0,-1)
@@ -657,9 +673,11 @@ const Logging = Utilities.Logging;
 
         result += ranges.reduce((acc,range)=>acc+=range.name+",","").slice(0,-1)
         result += "]=elem; "
-        result += this.actionAssigns(ctx.children.action[0],"");
-        result += CommentTools.addComments(ctx.children.action);
-        result += "return " + this.actionActions(ctx.children.action[0],"");
+
+        var subresult = this.actionStatement(ctx.children.actionStatement[0],args);
+
+        result += Utils.formatActionStmtNoWrap(subresult);
+
         result += "}))"
 
         return result;
@@ -667,15 +685,15 @@ const Logging = Utilities.Logging;
       }
 
 
-      forRange(ctx) {
+      forRange(ctx,args) {
         var result={}
-        result.name=this.ctxTools.childToString(ctx.children.lhs);
+        result.name=this.ctxTools.childToString(ctx.children.lhs,args);
         if(ctx.children.Comma){
-          result.arg =  "[" + this.ctxTools.iterate(ctx.children.expression,",") + "]";
+          result.arg =  "[" + this.ctxTools.iterate(ctx.children.expression,args) + "]";
         } else if(ctx.children.Colon) {
-          result.arg =  "$h.range(" +  this.ctxTools.iterate(ctx.children.expression,",") + ")"
+          result.arg =  "$h.range(" +  this.ctxTools.iterate(ctx.children.expression,args) + ")"
         } else {
-          result.arg =  this.ctxTools.iterate(ctx.children.rhs,",")
+          result.arg =  this.ctxTools.iterate(ctx.children.rhs,args)
         }
         return result;
       }

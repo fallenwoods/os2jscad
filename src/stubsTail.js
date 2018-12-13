@@ -96,7 +96,7 @@ result =  beautify(result, { indent_size: 2, space_in_empty_paren: true });
 
 result = "function main (){\n return " + result +  "\n}";
 
-fs.writeFileSync(__dirname + '/translated.js', result, {encoding:'utf8'});
+fs.writeFileSync(__dirname + '/stubsOutput.js', result, {encoding:'utf8'});
 
 //console.log (result);
 console.log("--");
