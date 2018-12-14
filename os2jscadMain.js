@@ -17,12 +17,23 @@ NOT HANDLED:
   NEXT:
     Remove examples and replace with a wget of the originals.
       Is there a wget for node, so that it need not be installed ( not default for windows)
+  Git documentation page
+    getting started
+    examples
+    options
+    includes
+    known issues
+    troubleshooting
+      stubs
 
   FIXME
-    Had a case where the assignments were done between the return and the actions
-      this comes from expressions like if() {{action}}
+    GridPicture
+      Included variables were not exposed
+      includes don't work with stubs
     Need to export top level variables from libraries too
       May need to decide to include them or not on the signature stack based on the use of include<> or use<>
+    Will stubs work with files that also have an import?
+
 
 
 
@@ -168,6 +179,7 @@ function os2jscadMain(argv) {
       options.fileExtension = commander.fileExtension;
       options.includes = commander.includes;
       options.comments = commander.comments;
+      options.stubs = commander.stubs;
 
       var inputText="";
 
@@ -184,7 +196,7 @@ function os2jscadMain(argv) {
       var fd = fs.openSync(outFileName,'w');
 
       // optionally add the stubs file for debug
-      if(commander.stubs){
+      if(commander.stubs && !isInclude){
           fs.writeSync(fd, stubs,'end','utf8');   // position == 'end' will be ignored.
           fs.writeSync(fd, result,'end','utf8');
 
@@ -197,7 +209,7 @@ function os2jscadMain(argv) {
       } else {
         fs.writeSync(fd, helpers,'end','utf8');
       }
-      if(commander.stubs){
+      if(commander.stubs&& !isInclude){
         fs.writeSync(fd, stubsTail,'end','utf8');
       }
 

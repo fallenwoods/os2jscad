@@ -14,8 +14,14 @@ class SignatureStack {
 
     saveSignature(funcName,params,libName){
         var signatures = this.scopes.slice(-1)[0];
-        signatures[funcName] = {names:params.vars.split(",")};
+        signatures[funcName] = {names:params.vars.split(","),type:"function"};  // Function and Module are not distiguished
         if (libName)signatures[funcName].libName = libName;
+    }
+
+    saveVarSignature(varName,libName){
+        var signatures = this.scopes.slice(-1)[0];
+        signatures[varName] = {type:"var"};
+        if (libName)signatures[varName].libName = libName;
     }
 
     getSignature(funcName){
@@ -30,8 +36,20 @@ class SignatureStack {
         return signature;
     }
 
+    getVarSignature(varName){
+        var signature;
+        for(var i = this.scopes.length-1;i>=0;i--){
+            if(this.scopes[i][varName]){
+                signature = this.scopes[i][varName];
+                break;
+            }
+        }
+        if(signature) signature.varName = varName;
+        return signature;
+    }
 
-    isVarInSignature(funcName,varName){
+
+    isNamedInSignature(funcName,varName){
         var signature = this.getSignature(funcName)
         return (signature && signature.names[varName] !== undefined) ? true : false;
     }

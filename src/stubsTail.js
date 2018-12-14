@@ -19,7 +19,12 @@ function showArgs(name,args){
 
   }
 
-
+  function include(fileName){
+    var basename = path.basename(fileName).split(".")[0];
+    var content = fs.readFileSync(__dirname + "\\"+ fileName, 'utf8');
+    var code = "((()=>{" + content + "})()); ";
+    return code;
+  }
 
 
 function color(a){ return showArgs('color',arguments); };

@@ -58,8 +58,16 @@ const Utils = Utilities.Utils;
     assignment(ctx,args) {
       var result = "";
       result += CommentTools.addComments(ctx.children.lhs,true)
-      var found = this.signatureStack.isVarInSignature(args.moduleName,ctx.children.lhs[0].image)
-      result += (found ? "": "var ") + this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"],args);
+      var assignStr = this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"],args);
+
+      var exportVar = this.signatureStack.getVarSignature(ctx.children.lhs[0].image)
+      if(exportVar) {
+        result =  exportVar.libName + "." +  assignStr;
+      } else {
+        var found = this.signatureStack.isNamedInSignature(args.moduleName,ctx.children.lhs[0].image) //
+        result = (found ? "": "var ") + assignStr;
+      }
+
       return result;
     }
 
@@ -77,6 +85,11 @@ const Utils = Utilities.Utils;
           break;
           case "LSquare":
           case "RSquare":
+          break;
+          case "Identifier":
+            var name = this.ctxTools.childToString(ctx.children[prop],args)
+            var exportVar = this.signatureStack.getVarSignature(name)
+            result =  (exportVar ? exportVar.libName + "." : "") +  name;
           break;
           default:
             result += this.ctxTools.childToString(ctx.children[prop],args)
@@ -206,15 +219,23 @@ const Utils = Utilities.Utils;
       result += "var fn=12;\n"
 
       result += libName + " = function () {\n";
-      result += (args.includes ? 'include ("helpers.js");' : "") + "\n$h();\n"
+      result += args.stubs ? "eval(":"";
+      result += args.includes ? 'include ("helpers.js")' : ""
+      result += args.stubs ? ");":"";
+      result += "$h();\n"
 
       args.sep="; ";
       //args.isActions=false;
       //result += this.ctxTools.iterate(ctx.children.statement,args);
 
+      var subresult = this.moduleBlock(ctx,args) ;  // treat a program like a module block
+      subresult.declarations.forEach((elem)=>{result += elem + ";\n"})
+
+      subresult.declarations = [];
+
       result += "\n" + libName +".libmain = function (args){\n";
 
-      var subresult = this.moduleBlock(ctx,args) ;  // treat a program like a module block
+
 
      result += Utils.formatActionStmtNoWrap(subresult);
 
@@ -305,8 +326,11 @@ const Utils = Utilities.Utils;
       var fileBase = path.basename(filePath);
 
       result +=  CommentTools.addComments(ctx.children.IncludeLiteral,true);
-      result +=  'include ("' + filePath + '"); '
-      result +=  'lib' + fileBase.split(".")[0] +'();\n';
+      result += args.stubs ? "eval(":"";
+      result +=  'include ("' + filePath + '") '
+      result += args.stubs ? ");":"";
+
+      result +=  'lib' + fileBase.split(".")[0] +'()\n';
       return result;
     }
 

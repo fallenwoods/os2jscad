@@ -56,6 +56,26 @@
     {
         "type": "node",
         "request": "launch",
+        "name": "Build GridPicture w Stubs",
+        "args": ["-e","js","-s","-i","examples/GridPicture/main.scad"],
+        "program": "${workspaceFolder}/os2jscadMain.js"
+    },
+    {
+        "type": "node",
+        "request": "launch",
+        "name": "Build GridPicture",
+        "args": ["-e","js","-i","examples/GridPicture/main.scad"],
+        "program": "${workspaceFolder}/os2jscadMain.js"
+    },
+    {
+        "type": "node",
+        "request": "launch",
+        "name": "run GridPicture",
+        "program": "${workspaceFolder}/examples/GridPicture/main.js"
+    },
+    {
+        "type": "node",
+        "request": "launch",
         "name": "Launch output.js",
         "program": "${workspaceFolder}/output.js"
     },

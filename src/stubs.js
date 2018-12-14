@@ -1,5 +1,6 @@
 const beautify = require('js-beautify').js;
 var fs = require('fs');
+var path = require('path');
 
 //var $fn=12;   // Fixme convert to fn for jscad
 //const undef = undefined;

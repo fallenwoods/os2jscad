@@ -35,18 +35,23 @@ const Logging = Utilities.Logging;
     program(ctx,options) {
         this.options = options;
 
-        this.moduleBodyDeclarations(ctx,options.libName);  // Program is actually a moduleBodyDeclaration
+        this.moduleBlock(ctx,options.libName);  // Program is actually a moduleBlock
 
         return  this.signatureStack;
       }
 
-    moduleBodyDeclarations(ctx,libName) {
-        if(ctx.children.declaration){
-            ctx.children.declaration.forEach((elem)=>{
-            this.declaration(elem,libName);
+      moduleBlock(ctx,libName) {
+        if(ctx.children.statement){
+            ctx.children.statement.forEach((stmt)=>{
+            this.statement(stmt,libName);
             })
         }
 
+    }
+
+    statement(ctx,libName) {
+      if(ctx.children.declaration) this.declaration(ctx.children.declaration[0],libName);
+      if(ctx.children.assignment) this.assignment(ctx.children.assignment[0],libName);
     }
 
     declaration(ctx,libName) {
@@ -54,12 +59,21 @@ const Logging = Utilities.Logging;
         if(ctx.children.moduleDefinition) this.moduleDefinition(ctx.children.moduleDefinition[0],libName);
         if(ctx.children.functionDefinition) this.functionDefinition(ctx.children.functionDefinition[0],libName);
 
+
       }
+
+    assignment(ctx,libName) {
+
+      var varName = ctx.children.lhs[0].image;
+
+      this.signatureStack.saveVarSignature(varName,libName);
+
+    }
 
     functionDefinition(ctx,libName) {
         var functionName = ctx.children.Identifier[0].image;
         var params = this.paramsParser(ctx.children.parameters)
-        this.options.moduleName = functionName;
+        //this.options.moduleName = functionName;
 
         this.signatureStack.saveSignature(functionName,params,libName);
 
@@ -71,7 +85,7 @@ const Logging = Utilities.Logging;
     moduleDefinition(ctx,libName) {
       var moduleName = ctx.children.Identifier[0].image;
       var params = this.paramsParser(ctx.children.parameters)
-      this.options.moduleName = moduleName;
+      //this.options.moduleName = moduleName;
 
       this.signatureStack.saveSignature(moduleName,params,libName);
 
