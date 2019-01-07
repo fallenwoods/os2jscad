@@ -11,14 +11,10 @@ function helpers(){
   str = function str(args){ return [...arguments].toString();}
   len = function len(a) { return a.length;}
   import_dxf = function import_dxf(args) { return $import(arguments);}
-
-  concat = function concat(arys) {
-    return [...arguments].reduce((acc, val) => acc.concat(val) , [])
-  }
-
-
+  concat = function concat(arys) {return [...arguments].reduce((acc, val) => acc.concat(val) , []) }
   nullCSG = function nullCSG() { return polyhedron({points: [],triangles: []});} // This doens't explicitly exist in OpenScad, but is implied
   echof = function echof(args) {  console.log(...arguments); return nullCSG();} // adding nullCSG(); to this allows it to be added within a function chain. e.g. translate() echo() sphere()
+  render = function render(convexity,obj) { return obj;}
 
   text = function text(text,size,font,halign,valign,spacing,direction,language,script,fn){
 
@@ -58,6 +54,7 @@ function helpers(){
       arys = arys.slice(0,-1);
     }
     var result = forRecurse(arys);
+    // including an if function allows this to be used for list comprehension as well as for
     if(ifFunc){
       result = result.filter((elem)=>{
         return ifFunc(...elem);
@@ -66,24 +63,8 @@ function helpers(){
     return result.map(bodyFunc);
   }
 
-  /*
- // $h.<name> are functions added to make the translation more readable.
-  $h.forLoop = function forLoop(arys){
-    var arys = [...arguments];
-    if(typeof arys.slice(-1)[0] === "function"){
-      var ifFunc = arys.slice(-1)[0];
-      arys = arys.slice(0,-1);
-    }
-    var result = forRecurse(arys);
-    if(ifFunc){
-      result = result.filter((elem)=>{
-        return ifFunc(...elem);
-      })
-    }
-    return result;
-  }
-  //*/
-
+  // For input arrays i,j,k... creates an array [[i,j,k...][...]...] for every iterative value of i,j,k...
+  // e.g forRecurse([1,2,3],[5,6]) returns [[1,5],[1,6],[2,5],[2,6],[3:5],[3,6]]
   function forRecurse(arys){
     //var arys = [...arguments];
     var last = arys.slice(-1)[0];
@@ -99,10 +80,10 @@ function helpers(){
     }
   }
 
+  // creates an array of indexes from start to end (inclusive) in steps of inc
+  // The inputs can be real (does not require integers)
   $h.range = function range(start,inc,end){
       if(end===undefined) {end=inc;inc=1;}
-      // I'm not sure why I used floor for the inputs, they don't have to be integers
-      //start = Math.floor(start);inc=Math.floor(inc);end=Math.floor(end);
       return Array(Math.floor((end-start)/inc)+1).fill(start).map((e,i)=>e+i*inc)
     }
 
@@ -110,7 +91,7 @@ function helpers(){
     return (cond) ? trueFunc() : (falseFunc ? falseFunc() : nullCSG());
   }
 
-  // Javascript does no have
+  // This resolves problems when arguments are passed with some named and others not.
   $h.setArguments = function setArguments(names, values, defs) {
     var result = [];
     var isObjArg = (typeof(values[0]) === "object" && !Array.isArray(values[0])) || false;
@@ -128,14 +109,71 @@ function helpers(){
     return result;
   }
 
+  $h.vadd = function vadd(lhs,rhs){
+    var result=[];
+    if(! Array.isArray(lhs) && ! Array.isArray(rhs)) result = lhs + rhs;
+    else if(Array.isArray(lhs) && ! Array.isArray(rhs)) result = undef;
+    else if(! Array.isArray(lhs) && Array.isArray(rhs)) result = undef;
+    else if(Array.isArray(lhs) && Array.isArray(rhs)) {for(var i=0;i<Math.min(lhs.length,rhs.length);i++) result.push($h.vadd(lhs[i],rhs[i]));}
+    else result = undef
+    return result;
+  }
+  $h.vsub = function vsub(lhs,rhs){
+    var result=[];
+    if(! Array.isArray(lhs) && ! Array.isArray(rhs)) result = lhs - rhs;
+    else if(Array.isArray(lhs) && ! Array.isArray(rhs)) result = undef;
+    else if(! Array.isArray(lhs) && Array.isArray(rhs)) result = undef;
+    else if(Array.isArray(lhs) && Array.isArray(rhs)) {for(var i=0;i<Math.min(lhs.length,rhs.length);i++) result.push( $h.vsub(lhs[i],rhs[i]));}
+    else result = undef
+    return result;
+  }
 
-  // X is red, Y is green and Z is Blue (or should be)
+  $h.vmult = function vmult(lhs,rhs){
+    var result=[];
+    if(! Array.isArray(lhs) && ! Array.isArray(rhs)) result = lhs * rhs;
+    else if(Array.isArray(rhs) && Array.isArray(rhs[0])) result =$h.vmatrix(lhs,rhs);
+    else if(Array.isArray(lhs) && ! Array.isArray(rhs)) result = lhs.map((elem)=>$h.vmult(elem,rhs))
+    else if(! Array.isArray(lhs) && Array.isArray(rhs)) result = rhs.map((elem)=>$h.vmult(lhs,elem))
+    else  { result =0; for(var i=0;i<rhs.length;i++) { result += $h.vmult(lhs[i],rhs[i])} if(result!==result) result = undef;}
+    //else result = undef
+    return result;
+  }
+
+  $h.vmatrix = function vmatrix(lhs,rhs){
+    var result=[];
+    if(!Array.isArray(rhs) || ! Array.isArray(rhs[0])) result = undef;
+    else if(Array.isArray(lhs[0]) && lhs[0].length != rhs.length) result = undef;  // row and column dimensions don't agree, can't do matrix math
+    else {
+      var xpose = $h.transpose(rhs);
+      if(Array.isArray(lhs[0])){
+        result = lhs.map((lhsElem)=>xpose.map((tElem)=>$h.vmult(lhsElem,tElem)));
+      } else {
+        result = xpose.map((tElem)=>$h.vmult(lhs,tElem));
+      }
+    }
+    return result;
+  }
+  $h.transpose = function transpose(mat){
+    return mat[0].map((outer,i)=>mat.map((inner,j)=>mat[j][i]));
+  }
+
+  $h.vdiv = function vdiv(lhs,rhs){
+    var result=[];
+    if(! Array.isArray(lhs) && ! Array.isArray(rhs)) result = lhs / rhs;
+    else if(Array.isArray(lhs) && ! Array.isArray(rhs)) result = lhs.map((elem)=>$h.vdiv(elem,rhs))
+    else if(!Array.isArray(lhs) &&  Array.isArray(rhs))  result = rhs.map((elem)=>$h.vdiv(lhs,elem))
+    else if(Array.isArray(lhs) && Array.isArray(rhs)) result =undef;
+    else result = undef
+    return result;
+  }
+
+  // X is red, Y is green and Z is Blue
   $h.axisHelper = function axisHelper(){
     var r=0.1;
     var oneAxis = union(cylinder({h: 9,r2: r,r1: r}),
     translate([0, 0, 9], cylinder({h: 1,r2: 0,r1: r*2})));
     return union(
-        color("blue", oneAxis),   //FIXME do I need to close oneAxis?
+        color("blue", oneAxis),
         color("red", rotate([0, 90, 0], oneAxis)),
         color("green", rotate([-90, 0, 0], oneAxis))
       );

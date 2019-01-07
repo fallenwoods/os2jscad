@@ -36,14 +36,14 @@ measured_z = [
 max_z_scale   = 100;   // Scale at Time 0.5
 min_z_scale   = 10;    // Scale at Time 0.0 and 1.0
 thickness     = 0.5;   // thickness of the mesh triangles
-tesselation   = 1;     // levels of tesselation from 0-2
+tesselation_def   = 1;     // levels of tesselation from 0-2  //TJM
 alternation   = 2;     // direction change modulus (try it)
 
 //
 // Appearance
 //
 
-show_plane    = true;
+show_plane_def    = true;
 show_labels   = true;
 arrow_length  = 5;
 
@@ -98,7 +98,8 @@ function pos(x,y,z) = [x * xspace, y * yspace, z_scale_factor * (z - mean_value)
 //
 module point_markers(show_home=true) {
   // Mark the home position 0,0
-  color([0,0,0,0.25]) translate([1,1]) cylinder(r=1, h=z_scale_factor, center=true);
+  //color([0,0,0,0.25])
+  translate([1,1]) cylinder(r=1, h=z_scale_factor, center=true);
 
   for (x=[0:mesh_points_x-1], y=[0:mesh_points_y-1]) {
     z = measured_z[y][x];
@@ -109,15 +110,15 @@ module point_markers(show_home=true) {
       if (show_labels) {
         v = z - mean_value;
 
-        color(abs(v) < 0.1 ? [0,0.5,0] : [0.25,0,0])
+        //color(abs(v) < 0.1 ? [0,0.5,0] : [0.25,0,0])
         translate([0,0,down?-10:10]) {
 
           $fn=8;
           rotate([90,0])
-            text(str(z), 6, label_font_lg, halign="center", valign="center");
+            linear_extrude(1) text(str(z), 6, label_font_lg, halign="center", valign="center");
 
           translate([0,0,down?-6:6]) rotate([90,0])
-            text(str(down ? "" : "+", v), 3, label_font_sm, halign="center", valign="center");
+            linear_extrude(1) text(str(down ? "" : "+", v), 3, label_font_sm, halign="center", valign="center");
         }
       }
 
@@ -160,9 +161,9 @@ module tesselated_square(s, alt=false) {
 /**
  * The simplest mesh display
  */
-module simple_mesh(show_plane=show_plane) {
-  if (show_plane) color(plane_color) cube([mesh_width, mesh_height, thickness]);
-  color(mesh_color)
+module simple_mesh(show_plane=show_plane_def) {
+  if (show_plane)  cube([mesh_width, mesh_height, thickness]);
+  //color(mesh_color)
     for (x=[0:mesh_points_x-2], y=[0:mesh_points_y-2])
       tesselated_square(grid_square(x, y));
 }
@@ -170,10 +171,10 @@ module simple_mesh(show_plane=show_plane) {
 /**
  * Subdivide the mesh into smaller squares.
  */
-module bilinear_mesh(show_plane=show_plane,tesselation=tesselation) {
-  if (show_plane) color(plane_color) translate([-5,-5]) cube([mesh_width+10, mesh_height+10, thickness]);
+module bilinear_mesh(show_plane=show_plane_def,tesselation=tesselation_def) {
+  if (show_plane) translate([-5,-5]) cube([mesh_width+10, mesh_height+10, thickness]);
   tesselation = tesselation % 4;
-  color(mesh_color)
+  //color(mesh_color)
   for (x=[0:mesh_points_x-2], y=[0:mesh_points_y-2]) {
     square = grid_square(x, y);
     if (tesselation < 1) {

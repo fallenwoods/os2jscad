@@ -51,22 +51,28 @@ const Utils = Utilities.Utils;
     }
 
     arrayLookup(ctx,args) {
-      return "" +
+      var result =  "" +
         this.ctxTools.iterateChildren(ctx,["LSquare","expression","RSquare"],args);
+        return result;
     }
 
     assignment(ctx,args) {
       var result = "";
-      result += CommentTools.addComments(ctx.children.lhs,true)
+      result += CommentTools.addComments(ctx.children.lhs,args)
+      var varName = ctx.children.lhs[0].image;
       var assignStr = this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"],args);
 
-      var exportVar = this.signatureStack.getVarSignature(ctx.children.lhs[0].image)
-      if(exportVar) {
-        result =  exportVar.libName + "." +  assignStr;
-      } else {
-        var found = this.signatureStack.isNamedInSignature(args.moduleName,ctx.children.lhs[0].image) //
-        result = (found ? "": "var ") + assignStr;
+      var exportVar = this.signatureStack.getVarSignature(varName);
+
+      if(exportVar.libName){
+        result = exportVar.libName+".";
+      } else if (!exportVar.defined) {
+        result = "let ";
       }
+
+      result +=  assignStr;
+
+      if(exportVar) exportVar.defined=true;
 
       return result;
     }
@@ -89,7 +95,7 @@ const Utils = Utilities.Utils;
           case "Identifier":
             var name = this.ctxTools.childToString(ctx.children[prop],args)
             var exportVar = this.signatureStack.getVarSignature(name)
-            result =  (exportVar ? exportVar.libName + "." : "") +  name;
+            result =  ((exportVar && exportVar.libName) ? exportVar.libName + "." : "") +  name;
           break;
           default:
             result += this.ctxTools.childToString(ctx.children[prop],args)
@@ -106,14 +112,14 @@ const Utils = Utilities.Utils;
 
     binaryMultDivExpression(ctx,args) {
       var result = "";
-      /*
-      if(ctx.children.operator){
-        result = (ctx.children.operator[0].image === "*" ? "mult(" : "div(") +
-        this.ctxTools.childToString(ctx.children.lhs,args) +
-        ","+
-        this.ctxTools.childToString(ctx.children.rhs,args) +
-        ")";
-      } else */
+      //*
+      if(args.vectorMath && ctx.children.operator && ctx.$type ==="v"){
+        result = (ctx.children.operator[0].image === "*" ? "$h.vmult(" : "$h.vdiv(")
+        result += this.ctxTools.childToString(ctx.children.lhs,args)
+        result += ","
+        result += this.ctxTools.childToString(ctx.children.rhs,args)
+        result += ")";
+      } else //*/
        {
         result = this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"],args);
       }
@@ -122,14 +128,14 @@ const Utils = Utilities.Utils;
 
     binarySumDiffExpression(ctx,args) {
       var result = "";
-      /*
-      if(ctx.children.operator){
-        result = (ctx.children.operator[0].image === "+" ? "add(" : "diff(") +
+      //*
+      if(args.vectorMath && ctx.children.operator && ctx.$type ==="v"){
+        result = (ctx.children.operator[0].image === "+" ? "$h.vadd(" : "$h.vsub(") +
         this.ctxTools.childToString(ctx.children.lhs,args) +
         ","+
         this.ctxTools.childToString(ctx.children.rhs,args)+
         ")";
-      } else  */
+      } else  //*/
       {
         result = this.ctxTools.iterateChildren(ctx,["lhs","operator","rhs"],args)
       }
@@ -137,6 +143,7 @@ const Utils = Utilities.Utils;
     }
 
     unaryExpression(ctx,args) {
+      //FIXME handle unary +/- for vectors
       return this.ctxTools.iterateChildren(ctx,["operator","rhs"],args);
     }
 
@@ -148,15 +155,16 @@ const Utils = Utilities.Utils;
 
     functionDefinition(ctx,args) {
       var functionName = ctx.children.Identifier[0].image;
+      this.signatureStack.setScope(functionName);
+
       var params = this.paramsParser(ctx.children.parameters,args)
       var libName = (args && args.libName) ? args.libName : "";
       args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
       args.functionName = functionName;
-
-      //this.signatureStack.saveSignature(functionName,params,libName); // this is now done in the preprocessor
+      delete args.libName;
 
       var result="";
-      result += "\n"+CommentTools.addComments(ctx.children.FunctionLiteral,true);
+      result += "\n"+CommentTools.addComments(ctx.children.FunctionLiteral,args);
       if(libName) {
         result += libName +"." + functionName +" = function ";
       } else {
@@ -165,24 +173,26 @@ const Utils = Utilities.Utils;
       result += " ( " + params.vars + ") ";
       result += "{ "
       result += params.defaults;
-      result += "\n"+CommentTools.addComments(ctx.children.body,true);
+      result += "\n"+CommentTools.addComments(ctx.children.body,args);
       result += "return (" + this.ctxTools.childToString(ctx.children.body,args) + ");"
       result += "}\n"
 
-        return result;
+      this.signatureStack.popScope();
+      return result;
     }
 
     moduleDefinition(ctx,args) {
       var moduleName = ctx.children.Identifier[0].image;
+      this.signatureStack.setScope(moduleName);
+
       var params = this.paramsParser(ctx.children.parameters,args)
       var libName = (args && args.libName) ? args.libName : "";
       args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
       args.moduleName = moduleName;
-
-      // this.signatureStack.saveSignature(moduleName,params,libName);  // this is now done in the preprocessor
+      delete args.libName;
 
       var result = "";
-      result += "\n"+CommentTools.addComments(ctx.children.ModuleLiteral);
+      result += "\n"+CommentTools.addComments(ctx.children.ModuleLiteral,args);
 
       if(libName) {
         result += libName +"." + moduleName +" = function ";
@@ -195,18 +205,21 @@ const Utils = Utilities.Utils;
       result += " ( " + params.vars + ") ";
       result += "{ "
 
+      result += params.defaults +"\n";
+
       var subresult = this.moduleBlock(ctx,args) ;  // treat a program like a module block
 
       result += Utils.formatActionStmtNoWrap(subresult);
 
       result += "}\n";
 
+      this.signatureStack.popScope();
       return result;
     }
 
     program(ctx,args) {
       //this.options = options;
-      this.signatureStack = args.signatureStack || new SignatureStack();
+      this.signatureStack = args.signatureStack;
 
       CommentTools.doComments(args.comments===true);
       var result = "";
@@ -218,31 +231,31 @@ const Utils = Utilities.Utils;
       result += "var animate=0;\n"
       result += "var fn=12;\n"
 
-      result += libName + " = function () {\n";
-      result += args.stubs ? "eval(":"";
+      result += (libName ===undefined ? "libmain" : libName) + " = function () {\n";
+      result += (args.stubs && args.includes) ? "eval(":"";
       result += args.includes ? 'include ("helpers.js")' : ""
-      result += args.stubs ? ");":"";
-      result += "$h();\n"
+      result += (args.stubs && args.includes) ? ")":"";
+      result += "\n $h();\n"
 
-      args.sep="; ";
       //args.isActions=false;
       //result += this.ctxTools.iterate(ctx.children.statement,args);
 
       var subresult = this.moduleBlock(ctx,args) ;  // treat a program like a module block
-      subresult.declarations.forEach((elem)=>{result += elem + ";\n"})
+      subresult.declarations.forEach((elem)=>{result += elem + (elem.slice(-1)==="}" ? ";\n" :"\n");})
 
       subresult.declarations = [];
 
-      result += "\n" + libName +".libmain = function (args){\n";
+      result += libName === undefined ? "" : "\n" + libName +".libmain = function (args){\n";
+
+      result += Utils.formatActionStmtNoWrap(subresult);
 
 
+      result += libName === undefined ? "" : "}\n";
+      result += "}\n";
 
-     result += Utils.formatActionStmtNoWrap(subresult);
-
-
-      result += "}\n}\n";
-
-      result += "function main(args) { " + libName +"();\n return "+ libName +".libmain(args);}"
+      result += libName === undefined
+          ? "function main(args) {  return libmain(args);}"
+          : "function main(args) { " + libName +"();\n return "+ libName +".libmain(args);}"
 
       return result;
     }
@@ -285,6 +298,8 @@ const Utils = Utilities.Utils;
 
     }
 
+
+
     paramsParser(ctx,args){
       var names = "";
       var defaults = "";
@@ -314,6 +329,8 @@ const Utils = Utilities.Utils;
     paramParser(ctx,args){
       var key = ctx.children.paramName ? ctx.children.paramName[0].image : "$value";
       var value = ctx.children.default ? this.ctxTools.childToString(ctx.children.default,args) : undefined;
+      var exportVar = this.signatureStack.getVarSignature(key);
+      exportVar.defined=true;
 
       return({key:key,value:value});
     }
@@ -325,7 +342,7 @@ const Utils = Utilities.Utils;
       var filePath = ctx.children.IncludeFile[0].image.slice(1,-1).replace(".scad","."+args.fileExtension); //FIXME - path here?
       var fileBase = path.basename(filePath);
 
-      result +=  CommentTools.addComments(ctx.children.IncludeLiteral,true);
+      result +=  CommentTools.addComments(ctx.children.IncludeLiteral,args);
       result += args.stubs ? "eval(":"";
       result +=  'include ("' + filePath + '") '
       result += args.stubs ? ");":"";
@@ -414,7 +431,7 @@ const Utils = Utilities.Utils;
 
 
       if(result ==="") {
-        result += " nullCSG()";
+        //result += "nullCSG()";
       }
 
 
@@ -439,47 +456,48 @@ const Utils = Utilities.Utils;
       var result = "";
       args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
 
-      var funcName = ctx.children.Identifier[0].image;
 
-      var signature = this.signatureStack.getSignature(funcName);
-      args.signature = signature;
-      var funcArgs = this.argumentsParser(ctx.children.arguments,args);
-      var named = funcArgs.slice(-1)[0] || {};
-      funcArgs = funcArgs.slice(0,-1);
+      var moduleName = ctx.children.Identifier[0].image;
+      var signature = args.signature = this.signatureStack.getSignature(moduleName);
 
 
-      Logging.warnCheck(ctx,(funcName=="linear_extrude" && named.scale)," OpenJSCAD linear_extrude does not recognize the scale argument")
-      Logging.warnCheck(ctx,(funcName=="minkowski" && named.scale)," minkowski() is not supported")
-      Logging.warnCheck(ctx,(funcName=="linear_extrude" && named.center)," OpenJSCAD linear_extrude will center in x,y,z rather than just z")
-      Logging.warnCheck(ctx,(funcName=="text" && (named.font || named.valign || named.direction || named.language || named.script || named.fn)),"Conversion for text is limited. The following arguments are not supported: font, valign, direction, language, script and fn")
+      var moduleArgs = this.argumentsParser(ctx.children.arguments,args);
+      var named = moduleArgs.slice(-1)[0] || {};
+      moduleArgs = moduleArgs.slice(0,-1);
 
-      // HACK Alert: fixing some of the function names/arguments to allow them to function properly.
-      funcName = funcName ==="echo" ? "echof" : funcName;
-      if(funcName ==="circle") named.center = named.center ? named.center : true;
-      if(funcName ==="cylinder" && (named.r2 && !named.r1)) {
-        named.r1 = named.r; delete named.r;
-      }
+      moduleName = this.translateSignatures(ctx,moduleName,named,moduleArgs);
 
       // There is no available import in jscad, the code below assumes that the import file has been pre-processed into
       //  a jscad .js file and is available in the target import directory
-      if(funcName === "import" || funcName === "import_dxf" || funcName === "import_stl"){
-        var fileName = named.file || funcArgs[0];
-        var convexity = named.convexity || funcArgs[1];
-        var layer = named.layer || funcArgs[2];
-        funcName = fileName.replace(/\./g,"_").slice(1,-1);
+      if(moduleName === "import" || moduleName === "import_dxf" || moduleName === "import_stl"){
+        var fileName = named.file || moduleArgs[0];
+        var convexity = named.convexity || moduleArgs[1];
+        var layer = named.layer || moduleArgs[2];
+        moduleName = fileName.replace(/\./g,"_").slice(1,-1);
         fileName = fileName.replace(/\.(dxf|stl)/,"_$1.js");
 
-        result += "(" + funcName + "("+ (convexity || "") +")["+ (layer || '1') +"], ";
+        result += "(" + moduleName + "("+ (convexity || "") +")["+ (layer || '1') +"], ";
 
       } else {
-        result +=  " " + ((signature && signature.libName) ? signature.libName+"." : "") + funcName
+        result +=  " " + ((signature && signature.libName) ? signature.libName+"." : "") + moduleName
         result +=   "(  ";
-        result +=  funcArgs.length ? funcArgs.toString() +", "  :"";
+        result +=  moduleArgs.length ? moduleArgs.toString() +", "  :"";
         result +=  Object.keys(named).length>0 ?  "{"+Object.keys(named).reduce((acc,key)=>{return acc +( key + ":" + named[key]+",")},"").slice(0,-1) +"}, " :"";
 
 
         // FIXME - This adds a nullCSG() to translate() correctly, but also adds it to sphere() i.e. sphere(r=3,nullCSG())
         var subresult = this.actionStatement(ctx.children.actionStatement[0],args);
+
+        if(subresult.actions && subresult.actions.length === 0){
+          result = result.slice(0,-2);
+        }
+
+        //if(subresult.actions && subresult.actions[0]==="nullCSG()" && Utils.isPrimtive(moduleName)){
+          //result = result.slice(0,-2);
+        //  subresult.actions[0]="";
+        //}
+
+        //primitives: cube, sphere, cylinder, polyhedron, square, circle, ellipse, regular_polygon, polygon, text, import
 
         result += Utils.formatActionStmtFullWrap(subresult);
 
@@ -490,17 +508,60 @@ const Utils = Utilities.Utils;
 
     }
 
+    translateSignatures(ctx,moduleName,named,moduleArgs){
+
+
+      Logging.warnCheck(ctx,(moduleName=="linear_extrude" && named.scale)," OpenJSCAD linear_extrude does not recognize the scale argument")
+      Logging.warnCheck(ctx,(moduleName=="minkowski" && named.scale)," minkowski() is not supported")
+      Logging.warnCheck(ctx,(moduleName=="linear_extrude" && named.center)," OpenJSCAD linear_extrude will center in x,y,z rather than just z")
+      Logging.warnCheck(ctx,(moduleName=="text" && (named.font || named.valign || named.direction || named.language || named.script || named.fn)),"Conversion for text is limited. The following arguments are not supported: font, valign, direction, language, script and fn")
+      Logging.infoCheck(ctx,moduleName=="text" ,"Text is 2d and must be extruded."); // FIXME, look for extrude in module chain?
+      Logging.warnCheck(ctx,moduleName=="polyhedron" ,"Polyhedron faces and triangles must be in CW order. See OpenScad docs on polyhedron,F12 and pink faces.");
+
+      // HACK Alert: fixing some of the function names/arguments to allow them to function properly.
+      switch(moduleName){
+        case "echo":
+          moduleName = "echof"
+        break;
+        case "circle":
+          named.center = named.center ? named.center : true;
+          //named.r = named.r || 1; //required if named is present
+          if(moduleArgs.length>0) {named.r = moduleArgs[0];moduleArgs.splice(0,1);}
+          if (named.d ) {named.r = named.d + "* 2"; delete named.d;}
+
+        break;
+        case "polyhedron":
+        if (named.faces ) {named.polygons = named.faces; delete named.faces;}
+
+        break;
+        case "cylinder":
+          if (named.d  ) {named.r  = named.d  + "* 2"; delete named.d;}
+          if (named.d1 ) {named.r1 = named.d1 + "* 2"; delete named.d1;}
+          if (named.d2 ) {named.r2 = named.d2 + "* 2"; delete named.d2;}
+          if (named.r2 && !named.r1) {named.r1 = named.r; delete named.r;}
+        break;
+        case "linear_extrude":
+          if(moduleArgs.length>0) {named.height = moduleArgs[0]; moduleArgs.splice(0,1);}  //OpenSCad accepts a single argument as the height
+        break;
+
+      }
+
+      return moduleName;
+    }
+
     functionCall(ctx,args) {
       var result = "";
       args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
 
-      var funcName = ctx.children.Identifier[0].image;
 
-      var signature = this.signatureStack.getSignature(funcName);
-      args.signature = signature;
+      var funcName = ctx.children.Identifier[0].image;
+      var signature = args.signature = this.signatureStack.getSignature(funcName);
+
       var funcArgs = this.argumentsParser(ctx.children.arguments,args);
       var named = funcArgs.slice(-1)[0] || {};
       funcArgs = funcArgs.slice(0,-1);
+
+      //funcName = this.translateSignatures(ctx,funcName,named,funcArgs); // is this ever used here?
 
       result +=  " " + ((signature && signature.libName) ? signature.libName+"." : "") + funcName
       result +=   "(  ";
@@ -545,7 +606,7 @@ const Utils = Utilities.Utils;
         if(signature.defaults){
           //named.$named=true;
           for(var i =0; i < signature.defaults.length;i++){
-            named[signature.names[i]] = named[signature.names[i]] == undefined ?  signature.defaults[i] : named[signature.names[i]] ;
+            named[signature.names[i]] = named[signature.names[i]] === undefined ?  signature.defaults[i] : named[signature.names[i]] ;
           }
         }
 
@@ -610,7 +671,7 @@ const Utils = Utilities.Utils;
       var result = "";
 
       if(ctx.children.EqualSign){
-        result += CommentTools.addComments(ctx.children.paramName[0]) +":";
+        result += CommentTools.addComments(ctx.children.paramName[0],args)// +":";
       }
 
       result += this.ctxTools.childToString(ctx.children.value,args);
@@ -674,7 +735,7 @@ const Utils = Utilities.Utils;
           result += (found ? "" : "let ") + prop + " = " + args[prop] + ";\n";
         }
       };
-      result += CommentTools.addComments(ctx.children.body,true);
+      result += CommentTools.addComments(ctx.children.body,args);
       result += "return (" + this.ctxTools.childToString(ctx.children.body,args) + ");"; // expression
 
       result += "})";

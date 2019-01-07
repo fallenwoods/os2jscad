@@ -50,6 +50,9 @@ function polyhedron (a){return showArgs('polyhedron',arguments); };
 function linear_extrude (a){return showArgs('linear_extrude',arguments); };
 function rotate_extrude (a){return showArgs('rotate_extrude',arguments); };
 function rectangular_extrude (a){return showArgs('rectangular_extrude',arguments); };
+function hull (a){return showArgs('hull',arguments); };
+function chain_hull (a){return showArgs('chain_hull',arguments); };
+
 
 function $import (a){return showArgs('$import',arguments); };
 
@@ -87,11 +90,14 @@ function rands(min,max,cnt,seed) {
     [29,1],[31,3]],[[37,14],[48,0]],[[48,14],[37,0]],[[56,21],[56,4],[57,1],[59,0],[61,0]],
     [[53,14],[60,14]]];
 
+    return segmentsForText;
+    /*
     let output = [];
     segmentsForText.forEach(segment => output.push(
       rectangular_extrude(segment, { w:2, h:1 })
     ));
     return union(output);
+    //*/
   }
 
 

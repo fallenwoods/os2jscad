@@ -3,13 +3,6 @@
  https://sap.github.io/chevrotain/playground/
  https://sap.github.io/chevrotain/docs/tutorial/step0_introduction.html
 
- NOTE:
-Should this be done with three passes through the interpreter?
-  - do a pass to find includes
-  - do a pass to build signatures (with lib refs)
-  - do a pass to convert the files based on their use in includes or not (simple when not)
-  - Also, the signature stack needs to be cleared between independent files (or directories)
-
 NOT HANDLED:
   surface: may add this as  a pre-defined function
   Search abilities.
@@ -27,21 +20,22 @@ NOT HANDLED:
       stubs
 
   FIXME
-    GridPicture
-      Included variables were not exposed
-      includes don't work with stubs
-    Need to export top level variables from libraries too
-      May need to decide to include them or not on the signature stack based on the use of include<> or use<>
-    Will stubs work with files that also have an import?
+    Comments in args list
+    multmatrix
 
 
+    Also, the signature stack needs to be cleared between independent files (or directories)
+    Still have issues with comments.
+    semi after function
+    functions with mix named and positionals are not merged to justed named (some calls won't accept named)
+      - Move them to after their respective tokens.
+      - Currently comments aren't working at all - need to finish transistion to trailing comments.
+    Should I use circles and hulls for 2d text?
+    No color names are available
+    Still see trailing nullCSG() in user defined module calls.
 
-
-    BIG ISSUE:
-      OpenScad allows /+-* of vectors (arrays). There is no way to create an override for this in javascript
-      Considering replacing x * y with mult(x,y) etc. Kind of a mess.
-      Requires observation of precedence e.g. mult before add. So a + b * c + d -> add(add(a,mult(b,c)),d) (or add(a,mult(b,c),d))
-      Would need to consider unary minus
+    The MarlinMesh example
+      constructs a mesh with faces oriented incorrectly (inward facing normals)
 
 
     The maze example shows a case where the converted code runs out of stack
@@ -110,19 +104,22 @@ function os2jscadMain(argv) {
   const allTokens =  require('./src/os2jscadLexer.js').allTokens;
   const os2jscadLexer =  require('./src/os2jscadLexer.js').os2jscadLexer;
   const os2jscadParser =  require('./src/os2jscadParser.js').os2jscadParser;
-  const os2jscadPreprocessor =  require('./src/os2jscadPreprocessor.js').os2jscadPreprocessor;
+  //const os2jscadPreprocessor =  require('./src/os2jscadPreprocessor.js').os2jscadPreprocessor;
+  const os2jscadVectMathPreProc =  require('./src/os2jscadVectMathPreProc.js').os2jscadVectMathPreProc;
   const os2jscadInterpreter =  require('./src/os2jscadInterpreter.js').os2jscadInterpreter;
   const getIncludeList = require("./src/getIncludeList.js").getIncludeList;
 
   const lexerInstance = new os2jscadLexer();
   const parserInstance = new os2jscadParser ([],allTokens);
-  const preprocessorInstance = new os2jscadPreprocessor();
+  //const preprocessorInstance = new os2jscadPreprocessor();
+  const vecMathPreProcInstance = new os2jscadVectMathPreProc();
   const interpreterInstance = new os2jscadInterpreter();
 
   commander
     .version('0.1.0')
     .option('-s, --stubs', 'Add stubs')
     .option('-c, --comments', 'Include comments')
+    .option('-v, --vectorMath', 'Use mult() etc for expressions to allow vector math')
     .option('-i, --includes', 'Recursively build include dependency files')
     .option('-e, --fileExtension [extension]', 'Use this as the output file extension [jscad]', 'jscad')
     .parse(argv);
@@ -175,11 +172,12 @@ function os2jscadMain(argv) {
       var libName = "lib"+ path.basename(outFileName).split(".")[0];
       libName = libName.replace(/[.-\s]/g,"_");
 
-      options.libName=libName;
+      //options.libName=libName;
       options.fileExtension = commander.fileExtension;
       options.includes = commander.includes;
       options.comments = commander.comments;
       options.stubs = commander.stubs;
+      options.vectorMath = commander.vectorMath;
 
       var inputText="";
 
@@ -246,9 +244,10 @@ function os2jscadMain(argv) {
           )
       }
       annotateCST(cst);  // record the location of the starts of the nodes for error messages
-      options.libName=libName
+      //options.libName=libName
       //const ast = interpreterInstance.moduleDefinition(cst)
-      var signatureStack = preprocessorInstance.program(cst,options)
+      //var signatureStack = preprocessorInstance.program(cst,options)
+      var signatureStack = vecMathPreProcInstance.program(cst,options)
       options.signatureStack = signatureStack;
       var result = interpreterInstance.program(cst,options)
 
@@ -257,7 +256,7 @@ function os2jscadMain(argv) {
         return // comment
         foo();
 
-        This regular expression just move the return on the next line after the comment
+        This regular expression just moves the return onto the next line after the comment
       */
       while (result.match(/return[^\/]\/\//)){
         result = result.replace(/return[^\/](\/\/[^\n]*)\n(\s*)/g,"$1\n$2return ");

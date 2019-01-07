@@ -65,7 +65,7 @@ const ModuleLiteral = createToken({name: "ModuleLiteral", pattern: /module/,  lo
 const ForLiteral = createToken({name: "ForLiteral", pattern: /for/,  longer_alt: Identifier});
 const IfLiteral = createToken({name: "IfLiteral", pattern: /if/,  longer_alt: Identifier});
 const ElseLiteral = createToken({name: "ElseLiteral", pattern: /else/,  longer_alt: Identifier});
-const CSGLiteral = createToken({name: "CSGLiteral", pattern: /union|intersection|difference|hull|render|minkowski/,  longer_alt: Identifier});  // These are currently treated as reserve words. I removed 'offset'
+const CSGLiteral = createToken({name: "CSGLiteral", pattern: /union|intersection|difference|hull|minkowski/,  longer_alt: Identifier});  // These are currently treated as reserve words. I removed 'offset'
 const LetLiteral = createToken({name: "LetLiteral", pattern: /let|assign/,  longer_alt: Identifier});
 const IncludeLiteral = createToken({name: "IncludeLiteral", pattern: /include|use/,  longer_alt: Identifier});
 

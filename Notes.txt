@@ -2,8 +2,10 @@ Troubleshooting
 Cannot use 'in' operator to search for 'extrude2d' in undefined
 
 <function> is not defined:    libraries are defined out of order.
+
 wrong arguments: The translator wrapped arguments in an object, but the openjscad code won't accept an object as an arg.
   e.g translate(v=[1,2,3]) becomes translate ({v:[1,2,3]}) which is not allowed by openjscad
+
 Cannot read property 'length' of undefined: return an empty value (or empty array?) (comment after return w/o the rest of the statement.
 
 
@@ -29,26 +31,26 @@ libflat_springV1_3, MarlinMesh
   issue with var in front of return in forLoop
   Still has issues with squares not being centered.
 
-  
+
 head-bashercurved
   minkowski
-  
+
 pathextrude
   vector math
   libpathextrude.torusknot is not a function
   a var is set to the result of a function
   the functions are not 'lifted' because they are assigned to the base class for export.
- 
-  
+
+
 parametric_involute_gear_v5.0
   issue with var in front of return in forLoop
   Unexpected token )
   Unexpected token var
-  
+
 GridPicture
   include is not bringing in any data.
-  
 
-  
 
-  
+
+
+

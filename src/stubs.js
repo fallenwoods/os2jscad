@@ -18,3 +18,5 @@ const pow = Math.pow
 const round = Math.round
 const sign = Math.sign
 const sqrt = Math.sqrt
+
+class CSG {Path2D(pts){return pts;}}

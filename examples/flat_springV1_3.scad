@@ -73,5 +73,5 @@ module arc_maker(radius, thickness, depth){
     }
 }
 
-//spring_maker(radius, thickness, depth, width, spring_count, stub_length);
-arc_maker(radius, thickness, depth);
+spring_maker(radius, thickness, depth, width, spring_count, stub_length);
+//arc_maker(radius, thickness, depth);

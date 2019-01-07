@@ -50,7 +50,7 @@ class  os2jscadParser extends Parser {
       $.CONSUME($t.FunctionLiteral);
       $.CONSUME($t.Identifier);
       $.CONSUME($t.LParen);
-      $.SUBRULE($.parameters,{LABEL:"parameters"});
+      $.SUBRULE($.parameters);
       $.CONSUME($t.RParen);
       $.CONSUME2($t.EqualSign);
       $.SUBRULE2($.expression,{LABEL:"body"});
@@ -61,7 +61,7 @@ class  os2jscadParser extends Parser {
       $.CONSUME($t.ModuleLiteral);
       $.CONSUME($t.Identifier);
       $.CONSUME($t.LParen);
-      $.SUBRULE($.parameters,{LABEL:"parameters"});
+      $.SUBRULE($.parameters);
       $.CONSUME($t.RParen);
       $.SUBRULE($.statement);
     });
@@ -129,7 +129,7 @@ class  os2jscadParser extends Parser {
         {ALT: () =>{
           $.CONSUME($t.Identifier);
           $.CONSUME($t.LParen);
-          $.SUBRULE($.arguments,{LABEL:"arguments"});
+          $.SUBRULE($.arguments);
           $.CONSUME($t.RParen);
           $.OR1([
             {ALT: () => $.SUBRULE($.actionStatement)},
@@ -461,6 +461,30 @@ class  os2jscadParser extends Parser {
 
   //}
 
+  /*
+  $.separateCommentTokens = function (tokens) {
+    let comments=[];
+    let newTokens = [];
+    let priorToken;
+
+    tokens.forEach((currTok) => {
+        if (chevrotain.tokenMatcher(currTok, this.tokensMap.Comment) || chevrotain.tokenMatcher(currTok, this.tokensMap.CommentBlock)) {
+          priorToken = priorToken || currTok;   // if the first token is a comment, it will point back to itself
+          comments.push(currTok);
+
+        }
+        else {
+          priorToken = priorToken || currTok;   // ensure that priorToken has some value
+          priorToken.comments = comments;
+          comments=[];
+          priorToken = currTok;                 // move the priorToken pointer along
+          newTokens.push(currTok)
+        }
+    })
+    return newTokens;
+  }.bind(this);
+  //*/
+  //*
     $.separateCommentTokens = function (tokens) {
 
       let newTokens = []
@@ -477,6 +501,7 @@ class  os2jscadParser extends Parser {
       })
       return newTokens;
     }.bind(this);
+    //*/
   }
 }
 
