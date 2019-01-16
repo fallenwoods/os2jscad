@@ -1,5 +1,5 @@
-function norm(v)=sqrt(dot(v,v));
-function normalized(v)=v/norm(v);
+function doNorm(v)=sqrt(dot(v,v));
+function normalized(v)=v/doNorm(v);
 function dot(u,v)=u[0]*v[0]+u[1]*v[1]+u[2]*v[2];
 function cross(u,v)=[u[1]*v[2]-u[2]*v[1],v[0]*u[2]-v[2]*u[0],u[0]*v[1]-u[1]*v[0]];
 
@@ -163,7 +163,7 @@ function project_along_fpath_helper(profile,fpath,twist=0,i=0) =
 			twist_profile_along(
 				fpath[i][0],
 				profile,
-				(i>0)?norm(fpath[i][0]-fpath[i-1][0])*twist:0,
+				(i>0)?doNorm(fpath[i][0]-fpath[i-1][0])*twist:0,
 				fpath[i][1]),
 			fpath[i][1],
 			fpath[i][2],

@@ -20,23 +20,20 @@ NOT HANDLED:
       stubs
 
   FIXME
-    Comments in args list
+    pathextrude sqrt not defined
+    Star2D  Got overwritten with gear
+    robot arm - imports and stl, needs work
+    Parametric gears... redeclaration of function parameters as variables (e.g. finish)
+    Confirm include() still works
     multmatrix
-
-
-    Also, the signature stack needs to be cleared between independent files (or directories)
-    Still have issues with comments.
-    semi after function
-    functions with mix named and positionals are not merged to justed named (some calls won't accept named)
-      - Move them to after their respective tokens.
-      - Currently comments aren't working at all - need to finish transistion to trailing comments.
-    Should I use circles and hulls for 2d text?
-    No color names are available
-    Still see trailing nullCSG() in user defined module calls.
-
+    create declarations for variables that are used without being assigned
+    RoboArm mismatch parens
+    WhiteNight ERROR: hull() accepts only 2D forms / CAG
+    CookieCutter Invalid Array Length
+    CookieCutter2 top is too wide
+    The signature stack needs to be cleared between independent files (or directories)
     The MarlinMesh example
       constructs a mesh with faces oriented incorrectly (inward facing normals)
-
 
     The maze example shows a case where the converted code runs out of stack
       one method - find() gets called 41442 times for a 5x5x5 cube maze.
@@ -56,6 +53,7 @@ NOT HANDLED:
     you can't create a union of 3d and 2D objects. 2D have to be converted to 3D
     rotate(90) is an invalid syntax
     include is a reserved word
+    No color names are available
 
   Observed differences that work but may change results
     linear extrude doesn't allow scale.
@@ -98,8 +96,7 @@ function os2jscadMain(argv) {
 
 
   const Utilities = require("./src/Utilities.js");
-
-  var options = {};
+  const SignatureStack = Utilities.SignatureStack;
 
   const allTokens =  require('./src/os2jscadLexer.js').allTokens;
   const os2jscadLexer =  require('./src/os2jscadLexer.js').os2jscadLexer;
@@ -108,6 +105,7 @@ function os2jscadMain(argv) {
   const os2jscadVectMathPreProc =  require('./src/os2jscadVectMathPreProc.js').os2jscadVectMathPreProc;
   const os2jscadInterpreter =  require('./src/os2jscadInterpreter.js').os2jscadInterpreter;
   const getIncludeList = require("./src/getIncludeList.js").getIncludeList;
+  const getIncludeLines = require("./src/getIncludeList.js").getIncludeLines;
 
   const lexerInstance = new os2jscadLexer();
   const parserInstance = new os2jscadParser ([],allTokens);
@@ -144,33 +142,49 @@ function os2jscadMain(argv) {
     // Convert the file patterns from the command line to fully qualified file paths
   var filenames = commander.args.map((fileName)=>glob.sync(path.join(__dirname, fileName))).reduce((acc,fileList)=>acc.concat(fileList),[]);
 
+
   var includeFiles=[];
 
 
-  includeFiles = getIncludeList(filenames)
+  //includeFiles = getIncludeList(filenames)
 
   if(includeFiles && !commander.includes) console.log("INFO: Consider using the -i option to recursively convert included library.")
 
 
+  // TJM FIXME  Make this recursive. The included files may get rebuilt - later check dates to prevent rebuild
+  /*
   if(commander.includes){
     for(let file of includeFiles){
       processFile(file,true)
     }
   }
+  //*/
   for(let file of filenames){
-    processFile(file,false)
+    processFile(file)
   }
 
+var processed={};
 
+    function processFile(fileName,isInclude,signatureStack){
+      signatureStack = signatureStack || new SignatureStack();
 
-    function processFile(fileName,isInclude){
+      //var dependencies = getIncludeLines(fileName)
+      //if(dependencies) dependencies.forEach((dependent)=>{
+      //  processFile(dependent,true,signatureStack);
+      //})
 
       var outFileName = fileName.replace(".scad","."+commander.fileExtension);
       console.log(fileName);
       console.log(" ",outFileName);
+      let options={}
 
-      var libName = "lib"+ path.basename(outFileName).split(".")[0];
-      libName = libName.replace(/[.-\s]/g,"_");
+      var libName;
+      //if(isInclude){
+        libName = "lib"+ path.basename(outFileName).split(".")[0];
+        //libName =  path.basename(outFileName).split(".")[0];
+        libName = libName.replace(/[.-\s]/g,"_");
+        options.libName = libName;
+      //}
 
       //options.libName=libName;
       options.fileExtension = commander.fileExtension;
@@ -178,6 +192,7 @@ function os2jscadMain(argv) {
       options.comments = commander.comments;
       options.stubs = commander.stubs;
       options.vectorMath = commander.vectorMath;
+      options.signatureStack = signatureStack;
 
       var inputText="";
 
@@ -185,7 +200,7 @@ function os2jscadMain(argv) {
 
 
       // lex, parse and interpret the file
-      let result = tojsCad( inputText,libName);
+      let result = tojsCad( inputText,options);
 
       // format the result for output
       result = beautify(result, { indent_size: 2, space_in_empty_paren: true });
@@ -220,7 +235,7 @@ function os2jscadMain(argv) {
 
 
 
-  function tojsCad(inputText,libName) {
+  function tojsCad(inputText,options) {
       const lexResult = lexerInstance.tokenize(inputText)
 
 
@@ -247,8 +262,9 @@ function os2jscadMain(argv) {
       //options.libName=libName
       //const ast = interpreterInstance.moduleDefinition(cst)
       //var signatureStack = preprocessorInstance.program(cst,options)
-      var signatureStack = vecMathPreProcInstance.program(cst,options)
-      options.signatureStack = signatureStack;
+      //var signatureStack =
+      vecMathPreProcInstance.program(cst,options)
+      //options.signatureStack = signatureStack;
       var result = interpreterInstance.program(cst,options)
 
       /* A Hack. In javascript a return statement must have and expression on the same line, it won't line wrap.

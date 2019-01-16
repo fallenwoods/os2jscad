@@ -22,7 +22,7 @@ function getIncludeLines(fileName,parent){
 
         lines = buf.split('\n')  // each line in an array
         lines = lines.filter(line => /^\s*include\s*<[\w\.\/\\:]*>/.test(line))  // find include lines
-        lines = lines.map((line)=>path.join(path.dirname(fileName), line.replace(/.+<([^>]*)>.*\r?/, '$1')))
+        lines = lines.map((line)=>path.join(path.dirname(fileName), line.replace(/.+<([^>]*)>.*\r?/, '$1')).replace(/\\/g,"/"))
     } catch(exp){
         console.log("Unable to open file",fileName,(parent?"from file "+parent:""));
 
@@ -57,6 +57,7 @@ function getIncludeLines(fileName,parent){
 }
 
 module.exports = {
-    getIncludeList:  getIncludeList
+    getIncludeList:  getIncludeList,
+    getIncludeLines:    getIncludeLines
 
   }

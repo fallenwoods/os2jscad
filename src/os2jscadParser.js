@@ -279,33 +279,49 @@ class  os2jscadParser extends Parser {
 
     $.RULE("listComprehension", () => {
       $.CONSUME($t.LSquare);
-      $.AT_LEAST_ONE(() => {
-        $.CONSUME($t.ForLiteral);// for loop w/o action
-        $.CONSUME($t.LParen);
-        $.MANY_SEP({
-            SEP: $t.Comma, DEF: () => {
-              //$ .SUBRULE($.forRange,{LABEL:"ranges"});  //FIXME - not sure the ranges label here twice is a good idea
-              $.SUBRULE($.assignment,{LABEL:"ranges"});
-            }
-        },{LABEL:"ranges"});
-        $.CONSUME($t.RParen);
-      });
+      $.CONSUME($t.ForLiteral);
+      $.CONSUME($t.LParen);
+      $.MANY_SEP({
+          SEP: $t.Comma, DEF: () => {
+            $.SUBRULE($.assignment,{LABEL:"ranges"});
+          }
+      },{LABEL:"ranges"});
+      $.CONSUME($t.RParen);
       $.OPTION(() => {
-        $.CONSUME($t.IfLiteral);
-        $.CONSUME2($t.LParen);
-        $.SUBRULE($.expression,{LABEL:"ifExpression"});
-        $.CONSUME2($t.RParen);
+        $.SUBRULE($.listCompPart);
       })
-
-      $.OPTION2(() => {
-        $.CONSUME($t.LetLiteral);
-        $.CONSUME3($t.LParen);
-        $.SUBRULE($.arguments);
-        $.CONSUME3($t.RParen);
-      });
-
-      $.SUBRULE2($.expression,{LABEL:"body"});
       $.CONSUME($t.RSquare);
+    });
+
+    $.RULE("listCompPart", () => {
+      $.OR([
+        {ALT: () =>  {
+          $.CONSUME($t.ForLiteral);
+          $.CONSUME($t.LParen);
+          $.MANY_SEP({
+              SEP: $t.Comma, DEF: () => {
+                $.SUBRULE($.assignment,{LABEL:"ranges"});
+              }
+          },{LABEL:"ranges"});
+          $.CONSUME($t.RParen);
+        }},
+        {ALT: () => {
+          $.CONSUME($t.IfLiteral);
+          $.CONSUME2($t.LParen);
+          $.SUBRULE($.expression,{LABEL:"ifExpression"});
+          $.CONSUME2($t.RParen);
+        }},
+        {ALT: () => {
+          $.CONSUME($t.LetLiteral);
+          $.CONSUME3($t.LParen);
+          $.SUBRULE($.arguments);
+          $.CONSUME3($t.RParen);
+        }},
+        {ALT: () =>$.SUBRULE2($.expression,{LABEL:"body"})}
+      ]);
+      $.OPTION(() => {
+        $.SUBRULE($.listCompPart);
+      })
     });
 
 

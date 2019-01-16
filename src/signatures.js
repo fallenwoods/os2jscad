@@ -43,6 +43,28 @@ var baseSignatures ={
     func_children:{names:['index']},
     func_child:{names:['x']},
 
+    //Math built-ins
+    func_abs:{names:[]},
+    func_ceil:{names:[]},
+    func_exp:{names:[]},
+    func_floor:{names:[]},
+    func_log:{names:[]},
+    func_log10:{names:[]},
+    func_max:{names:[]},
+    func_min:{names:[]},
+    func_norm:{names:[]},
+    func_pow:{names:[]},
+    func_round:{names:[]},
+    func_sign:{names:[]},
+    func_sqrt:{names:[]},
+    func_sin:{names:[]},
+    func_cos:{names:[]},
+    func_tan:{names:[]},
+    func_asin:{names:[]},
+    func_acos:{names:[]},
+    func_atan:{names:[]},
+    func_atan2:{names:[]},
+
 }
 
 module.exports = baseSignatures;

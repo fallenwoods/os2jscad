@@ -1,9 +1,7 @@
 
 //=== Helper Utilities ==============================================
 
-$h=helpers;
-helpers = helpers;
-function helpers(){
+$h= helpers = function (){
 
   // These are replacements for functions that exist in OpenScad but don't have direct matches in OpenJSCAD
   undef = undefined;
@@ -27,35 +25,6 @@ function helpers(){
   render = function render(convexity,obj) { return obj;}
   t=0;
 
-  /*
-  text = function text(text,size,font,halign,valign,spacing,direction,language,script,fn){
-
-    [text,size,font,halign,valign,spacing,direction,language,script,fn] =
-      $h.setArguments(["text","size","font","halign","valign","spacing","direction","language","script","fn"],
-        arguments,
-        ["",10,"","left","baseline",1,"ltr","en","latin",12]);
-
-    function poly3Dto2D(poly){
-      var pts=[]
-      poly.vertices.forEach((vertex)=>pts.push([vertex.pos._x,vertex.pos._y]))
-      return polygon(pts);
-    }
-
-    size = size/2;  // adjust for apparent size difference scad to jscad
-    var thickness = 0.2 * size;
-    let segments = vectorText({letterspacing:spacing, align:halign, height: size},text);
-
-    var result=[];
-    segments.forEach(segment => {
-      var path = new CSG.Path2D(segment, false);
-      var csg = rectangular_extrude(path,{w:thickness, h:1, fn:16, closed:false});   // w, h, resolution, roundEnds
-      var polys = csg.polygons.filter((poly=>poly.plane.normal.z===1))
-      polys = polys.map((poly)=>poly3Dto2D(poly));
-      result = result.concat(polys)
-    })
-    return union(result);
-  }
-  //*/
   text = function text(text,size,font,halign,valign,spacing,direction,language,script,fn){
     [text,size,font,halign,valign,spacing,direction,language,script,fn] =
       $h.setArguments(["text","size","font","halign","valign","spacing","direction","language","script","fn"],
@@ -214,11 +183,17 @@ function helpers(){
         color("red", rotate([0, 90, 0], oneAxis)),
         color("green", rotate([-90, 0, 0], oneAxis))
       );
-  }
-
+  };
+  [helpers.undef,helpers.str,helpers.len,helpers.import_dxf,helpers.concat,helpers.nullCSG,
+    helpers.echof,helpers.render,helpers.t,helpers.text,helpers.$h] =
+      [undef,str,len,import_dxf,concat,nullCSG,echof,render,t,text,$h];
 
 
 }
+helpers();
+[undef,str,len,import_dxf,concat,nullCSG,echof,render,t,text,$h] =
+  [helpers.undef,helpers.str,helpers.len,helpers.import_dxf,helpers.concat,helpers.nullCSG,
+    helpers.echof,helpers.render,helpers.t,helpers.text,helpers.$h]
 
 
 

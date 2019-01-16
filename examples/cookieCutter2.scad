@@ -18,8 +18,8 @@ size = 25.4*cutter_sizes;
 
 module dummy() {}
 
-//scale = size/25.108;
-scale=1;
+//scaling = size/25.108;
+scaling=1;
 
 module ribbon(points, thickness=1, closed=false) {
     p = closed ? concat(points, [points[0]]) : points;
@@ -45,4 +45,4 @@ difference() {
 }
 }
 
-translate([0,-280.545*scale,0]) cookieCutter();
+translate([0,-280.545*scaling,0]) cookieCutter();

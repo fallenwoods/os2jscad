@@ -7,6 +7,7 @@ const Utilities = require("./Utilities.js");
 const SignatureStack = Utilities.SignatureStack;
 const CtxTools = Utilities.CtxTools;
 const Utils = Utilities.Utils;
+const Logging = Utilities.Logging;
 
 
 
@@ -21,13 +22,20 @@ const Utils = Utilities.Utils;
   class os2jscadVectMathPreProc {//} extends BaseCstVisitor {
 
     constructor() {
-        this.signatureStack = new SignatureStack();
+        this.signatureStack;// = new SignatureStack();
     }
 
     program (ctx,args) {
+        this.signatureStack = args.signatureStack;
         if(!ctx) return "s"; else if (Array.isArray(ctx) ) ctx=ctx[0];
 
+        var libName = args.libName === "main" ? "libmain" : args.libName;
+
+        this.signatureStack.addScope(libName)
+
         this.moduleBlock(ctx,args);  // Program is actually a moduleBlock
+
+        this.signatureStack.popScope();
 
         return  this.signatureStack;
 
@@ -35,10 +43,12 @@ const Utils = Utilities.Utils;
     functionDefinition (ctx,args) {
         if(!ctx) return "s"; else if (Array.isArray(ctx) ) ctx=ctx[0];
         args = Utils.clone(args); // replace local args reference with clone, so parent doesn't get changed.
+
         var libName = args.libName;
         delete args.libName;    // nothing in this scope should be treated as global
 
         var functionName = ctx.children.Identifier[0].image;
+        Logging.warnCheck(ctx, this.signatureStack.getSignature(functionName),"Symbol " + functionName + " is already defined.")
         var signature = this.signatureStack.saveSignature(functionName,libName);
 
         var newScope = this.signatureStack.addScope(functionName);  // parameters, vars, functions and modules will be within this scope
@@ -63,6 +73,7 @@ const Utils = Utilities.Utils;
         delete args.libName;    // nothing in this scope should be treated as global
 
         var moduleName = ctx.children.Identifier[0].image;
+        Logging.warnCheck(ctx, this.signatureStack.getSignature(moduleName),"Symbol " + moduleName + " is already defined.")
         var signature = this.signatureStack.saveSignature(moduleName,libName,"s");
 
         var newScope = this.signatureStack.addScope(moduleName);  // parameters, vars, functions and modules will be within this scope
@@ -161,7 +172,10 @@ const Utils = Utilities.Utils;
     }
     assignment (ctx,args) {
         if(!ctx) return "s"; else if (Array.isArray(ctx) ) ctx=ctx[0];
+        ctx.children.lhs[0].image = Utils.fixDollarVars(ctx.children.lhs[0].image)
         var varName = ctx.children.lhs[0].image;
+        Logging.warnCheck(ctx, this.signatureStack.getSignature(varName),"Symbol " + varName + " is already defined.")
+
         var result = this.expression(ctx.children.rhs,args)
 
         this.signatureStack.saveVarSignature(varName,args.libName,result);
@@ -177,10 +191,10 @@ const Utils = Utilities.Utils;
     conditionalExpression (ctx,args) {
         if(!ctx) return "s"; else if (Array.isArray(ctx) ) ctx=ctx[0];
         var result;
-        if(!ctx.children.trueClause){
+        if(!ctx.children.trueclause){
             result = this.binaryCompareExpression(ctx.children.condition,args);
         } else {
-            result = CtxTools.maxType(this.conditionalExpression(ctx.children.trueClause,args), this.conditionalExpression(ctx.children.falseClause,args) )
+            result = CtxTools.maxType(this.conditionalExpression(ctx.children.trueclause,args), this.conditionalExpression(ctx.children.falseclause,args) )
         }
 
         ctx.$type = result;
@@ -222,7 +236,12 @@ const Utils = Utilities.Utils;
     }
     atomicExpression (ctx,args) {
         if(!ctx) return "s"; else if (Array.isArray(ctx) ) ctx=ctx[0];
-        var signature = ctx.children.Identifier ? this.signatureStack.getVarSignature(ctx.children.Identifier[0].image): undefined
+        var signature;
+        if(ctx.children.Identifier){
+            ctx.children.Identifier[0].image = Utils.fixDollarVars(ctx.children.Identifier[0].image)
+            signature = this.signatureStack.getVarSignature(ctx.children.Identifier[0].image)
+        }
+
         var result = CtxTools.maxType(      //can visit accept undefined input?
             this.parenthesisExpression(ctx.children.parenthesisExpression,args),
             this.array(ctx.children.array,args),
@@ -244,6 +263,19 @@ const Utils = Utilities.Utils;
 
     listComprehension (ctx,args) {
         if(!ctx) return "s"; else if (Array.isArray(ctx) ) ctx=ctx[0];
+
+        this.signatureStack.addScope("anon");  // create a local scope for the for index variables and others within the block
+        if(ctx.children.ranges) ctx.children.ranges.forEach((range)=>{this.assignment(range,args);});
+        this.expression(ctx.children.body,args);
+        if(ctx.children.IfLiteral){
+            this.ctxTools.childToString(ctx.children.ifExpression,args)
+        }
+        if(ctx.children.LetLiteral){
+            this.arguments(ctx.children.arguments,args);
+        };
+
+        this.signatureStack.popScope();
+
         var result = "v";
         ctx.$type = result;
         return result
@@ -295,8 +327,10 @@ const Utils = Utilities.Utils;
     comment (ctx,args) {}
     forLoop (ctx,args) {
         if(!ctx) return "s"; else if (Array.isArray(ctx) ) ctx=ctx[0];
+        this.signatureStack.addScope("anon");  // create a local scope for the for index variables and others within the block
         if(ctx.children.ranges) ctx.children.ranges.forEach((range)=>{this.assignment(range,args);});
         this.actionStatement(ctx.children.actionStatement,args);
+        this.signatureStack.popScope();
         return "s";
     }
     ifStatement (ctx,args) {

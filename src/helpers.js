@@ -1,9 +1,9 @@
 
 //=== Helper Utilities ==============================================
 
-$h=helpers;
-helpers = helpers;
-function helpers(){
+
+function helpers (){
+  $h=helpers;
 
   // These are replacements for functions that exist in OpenScad but don't have direct matches in OpenJSCAD
   undef = undefined;
@@ -26,36 +26,8 @@ function helpers(){
   echof = function echof(args) {  console.log(...arguments); return nullCSG();} // adding nullCSG(); to this allows it to be added within a function chain. e.g. translate() echo() sphere()
   render = function render(convexity,obj) { return obj;}
   t=0;
+  animate=0;
 
-  /*
-  text = function text(text,size,font,halign,valign,spacing,direction,language,script,fn){
-
-    [text,size,font,halign,valign,spacing,direction,language,script,fn] =
-      $h.setArguments(["text","size","font","halign","valign","spacing","direction","language","script","fn"],
-        arguments,
-        ["",10,"","left","baseline",1,"ltr","en","latin",12]);
-
-    function poly3Dto2D(poly){
-      var pts=[]
-      poly.vertices.forEach((vertex)=>pts.push([vertex.pos._x,vertex.pos._y]))
-      return polygon(pts);
-    }
-
-    size = size/2;  // adjust for apparent size difference scad to jscad
-    var thickness = 0.2 * size;
-    let segments = vectorText({letterspacing:spacing, align:halign, height: size},text);
-
-    var result=[];
-    segments.forEach(segment => {
-      var path = new CSG.Path2D(segment, false);
-      var csg = rectangular_extrude(path,{w:thickness, h:1, fn:16, closed:false});   // w, h, resolution, roundEnds
-      var polys = csg.polygons.filter((poly=>poly.plane.normal.z===1))
-      polys = polys.map((poly)=>poly3Dto2D(poly));
-      result = result.concat(polys)
-    })
-    return union(result);
-  }
-  //*/
   text = function text(text,size,font,halign,valign,spacing,direction,language,script,fn){
     [text,size,font,halign,valign,spacing,direction,language,script,fn] =
       $h.setArguments(["text","size","font","halign","valign","spacing","direction","language","script","fn"],
@@ -82,36 +54,37 @@ function helpers(){
 
    // $h.<name> are functions added to make the translation more readable.
    $h.forLoop = function forLoop(arys){
-    var arys = [...arguments];
+    arys = [...arguments];
     var bodyFunc = arys.slice(-1)[0];
     arys = arys.slice(0,-1);
-    if(typeof arys.slice(-1)[0] === "function"){
-      var ifFunc = arys.slice(-1)[0];
-      arys = arys.slice(0,-1);
-    }
+    //if(typeof arys.slice(-1)[0] === "function"){
+    //  var ifFunc = arys.slice(-1)[0];
+    //  arys = arys.slice(0,-1);
+    //}
     var result = forRecurse(arys);
     // including an if function allows this to be used for list comprehension as well as for
-    if(ifFunc){
-      result = result.filter((elem)=>{
-        return ifFunc(...elem);
-      })
-    }
-    return result.map(bodyFunc);
+    //if(ifFunc){
+    //  result = result.filter((elem)=>{
+    //    return ifFunc(...elem);
+    //  })
+    //}
+    return result.map(bodyFunc).filter(elem=>elem!==undefined);
   }
 
   // For input arrays i,j,k... creates an array [[i,j,k...][...]...] for every iterative value of i,j,k...
   // e.g forRecurse([1,2,3],[5,6]) returns [[1,5],[1,6],[2,5],[2,6],[3:5],[3,6]]
   function forRecurse(arys){
     //var arys = [...arguments];
+    var result;
     var last = arys.slice(-1)[0];
     var rest = arys.slice(0,-1);
     if(rest.length==0){
       return last.map((elem)=>[elem]);
     } else if(rest.length==1){
-      var result = rest[0].map(i=>last.map(j=>[i,j])).reduce((acc,elem)=>acc.concat(elem),[]);
+      result = rest[0].map(i=>last.map(j=>[i,j])).reduce((acc,elem)=>acc.concat(elem),[]);
       return result;
     } else {
-      var result = forRecurse(rest).map(i=>last.map(j=>i.concat(j))).reduce((acc,elem)=>acc.concat(elem),[]);
+      result = forRecurse(rest).map(i=>last.map(j=>i.concat(j))).reduce((acc,elem)=>acc.concat(elem),[]);
       return result;
     }
   }
@@ -204,6 +177,10 @@ function helpers(){
     return result;
   }
 
+  $h.flatten = function (m){
+    return m.reduce((acc,elem)=>acc.concat(elem),[])
+  }
+
   // X is red, Y is green and Z is Blue
   $h.axisHelper = function axisHelper(){
     var r=0.1;
@@ -214,11 +191,18 @@ function helpers(){
         color("red", rotate([0, 90, 0], oneAxis)),
         color("green", rotate([-90, 0, 0], oneAxis))
       );
-  }
-
+  };
+  [helpers.undef,helpers.str,helpers.len,helpers.import_dxf,helpers.concat,helpers.nullCSG,
+    helpers.echof,helpers.render,helpers.t,helpers.text] =
+      [undef,str,len,import_dxf,concat,nullCSG,echof,render,t,text];
 
 
 }
+helpers();  // important during include()
+
+[undef,str,len,import_dxf,concat,nullCSG,echof,render,t,text] =
+  [helpers.undef,helpers.str,helpers.len,helpers.import_dxf,helpers.concat,helpers.nullCSG,
+    helpers.echof,helpers.render,helpers.t,helpers.text]
 
 
 

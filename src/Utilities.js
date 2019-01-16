@@ -7,36 +7,51 @@ class SignatureStack {
         this.root=require("./signatures.js");
         this.root.name="root";
         this.currentScope=this.root;
-        this.allScopes={};
+        this.allScopes={"root":this.root};
     }
-    addScope(newScope){
-        this.currentScope =  {parent:this.currentScope,name:newScope};    // create a new empty scope pointing to the current
-        this.allScopes[newScope] = this.currentScope;
+    appendSignatures(otherStack){
+        while(otherStack.parent){
+            var scope = otherStack.popScope();
+            this.addScope(scope.name,Object.assign({},scope))
+        }
+        // when the parent is undefined, the scope should be root, which we should not need to replicate
+        return this.currentScope;
+    }
+    addScope(newScopeName,newScope){
+        newScope = newScope ||{};
+        newScope.name = newScopeName;
+        newScope.parent = this.currentScope;
+        this.currentScope =  newScope;
+        if(newScopeName !== "anon") this.allScopes[newScopeName] = this.currentScope;
         return this.currentScope
     }
+
+    // TJM The intention here is to move to the parent, but leave the current scope behind in allScopes
     popScope(){
-        return this.currentScope = this.currentScope.parent;
+        //delete this.allScopes[this.currentScope.name]
+        return (this.currentScope = this.currentScope ? this.currentScope.parent : undefined);
     }
     setScope(name){
         return this.currentScope = this.allScopes[name];
     }
 
+    // FIXME the funcname should include the libname
     saveSignature(funcName,libName,type){
         var signatures =this.currentScope;
-        funcName = "func_"+funcName;
-        signatures[funcName] = {kind:"function",type:type,scope:signatures.name,name:funcName};  // Function and Module are not distiguished
-        if (libName)signatures[funcName].libName = libName;
+        var key = "func_"+funcName;
+        signatures[key] = {kind:"function",type:type,scope:signatures.name,name:funcName};  // Function and Module are not distiguished
+        if (libName)signatures[key].libName = libName;
 
-        return signatures[funcName];
+        return signatures[key];
     }
 
     saveVarSignature(varName,libName,type){
         var signatures =this.currentScope;
-        varName = "var_"+varName;
-        signatures[varName] = {kind:"var",type:type,scope:signatures.name,name:varName};
-        if (libName)signatures[varName].libName = libName;
+        var key = "var_"+varName;
+        signatures[key] = {kind:"var",type:type,scope:signatures.name,name:varName};
+        if (libName)signatures[key].libName = libName;
 
-        return signatures[varName];
+        return signatures[key];
     }
 
     getSignature(funcName){
@@ -217,10 +232,7 @@ class CtxTools {
       comments = CommentTools.addComments(ctx,args);
       result+= comments;
       if(ctx.image){
-         result +=
-          (ctx.image[0]==="$") ? ctx.image.slice(1) :
-          (ctx.image==="PI") ? "Math.PI" :
-          ctx.image;
+         result += ctx.image;
       } else if (ctx.name && this.interpreter[ctx.name]){
         result += this.interpreter[ctx.name](ctx,args);
       }
@@ -291,6 +303,10 @@ class Utils {
 
     static isPrimtive(funcName){
         return (funcName.match(/cube|sphere|cylinder|polyhedron|square|circle|ellipse|regular_polygon|polygon|text|import"/) !== null);
+    }
+
+    static fixDollarVars(varName){
+        return (varName.replace(/\$(fn|fa|fs|t|vpr|vpt|vpd|preview)/,"$1") );
     }
 
 

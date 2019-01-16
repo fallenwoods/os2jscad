@@ -1,9 +1,12 @@
 
 //=== Helper Utilities ==============================================
 
-$h=helpers;
-helpers = helpers;
-function helpers(){
+
+
+//helpers = helpers;
+$h = libhelpers = function libhelpers(){
+  
+  if(libhelpers.loaded) return;
 
   // These are replacements for functions that exist in OpenScad but don't have direct matches in OpenJSCAD
   undef = undefined;
@@ -26,6 +29,27 @@ function helpers(){
   echof = function echof(args) {  console.log(...arguments); return nullCSG();} // adding nullCSG(); to this allows it to be added within a function chain. e.g. translate() echo() sphere()
   render = function render(convexity,obj) { return obj;}
   t=0;
+
+
+  /*
+    function main (args) {
+  $h();
+  debugger;
+  //[mySphere] = requireAll("libmain",["mySphere"]);
+  require("helpers");
+  return (mySphere(3));
+  }
+  //*/
+  // FIXME where to put this so I can use it to import helpers too
+  /*
+  require = function (fileName,addGlobals){
+    include(fileName+".js");    // import the file contents
+    eval("lib"+fileName+"()");  // evaluate the main function
+    var exps = eval(name+".exports")  // get the desired exports from the main function
+    if(addGlobals) Object.assign(this,exps) // add all exported values to the surrounding scope if requested
+    return exps; // return the exports for use with a more conventional require e.g. const foo = require("fooFile").foo;
+  }
+  //*/
 
   /*
   text = function text(text,size,font,halign,valign,spacing,direction,language,script,fn){
@@ -79,6 +103,13 @@ function helpers(){
     });
     return union(o);
   }
+  
+  $h.load = function (name){
+  eval(name+"()");  // evaluate the main function
+  var exps = eval(name+".exports")  // get the desired exports from the main function
+  Object.assign(this,exps) // add all exported values to the surrounding scope if requested
+  return exps; // return the exports for use with a more conventional require e.g. const foo = require("fooFile").foo;
+}
 
    // $h.<name> are functions added to make the translation more readable.
    $h.forLoop = function forLoop(arys){
@@ -216,9 +247,11 @@ function helpers(){
       );
   }
 
-
+  libhelpers.$h = $h;
 
 }
+libhelpers();
+
 
 
 
