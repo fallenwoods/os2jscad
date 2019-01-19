@@ -8,6 +8,7 @@ NOT HANDLED:
   Search abilities.
 
   NEXT:
+    Provide an option to use vector math or regular math
     Remove examples and replace with a wget of the originals.
       Is there a wget for node, so that it need not be installed ( not default for windows)
   Git documentation page
@@ -20,8 +21,6 @@ NOT HANDLED:
       stubs
 
   FIXME
-    pathextrude sqrt not defined
-    Star2D  Got overwritten with gear
     robot arm - imports and stl, needs work
     Parametric gears... redeclaration of function parameters as variables (e.g. finish)
     Confirm include() still works

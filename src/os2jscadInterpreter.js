@@ -117,8 +117,8 @@ const Utils = Utilities.Utils;
       var result = "";
 
       //*
-      //if(args.vectorMath && ctx.children.operator && ctx.$type ==="v"){
-      if(ctx.children.operator){
+      if(args.vectorMath && ctx.children.operator){
+      //if(ctx.children.operator){
         var operator = ctx.children.operator[0].image;
         result = ( operator === "*" ? "$h.vmult(" : operator ==="/" ? "$h.vdiv(" : "$h.vmod(")
         result += this.ctxTools.childToString(ctx.children.lhs,args)
@@ -135,8 +135,8 @@ const Utils = Utilities.Utils;
     binarySumDiffExpression(ctx,args) {
       var result = "";
       //*
-      //if(args.vectorMath && ctx.children.operator && ctx.$type ==="v"){
-      if(ctx.children.operator){
+      if(args.vectorMath && ctx.children.operator){
+      //if(ctx.children.operator){
         result = (ctx.children.operator[0].image === "+" ? "$h.vadd(" : "$h.vsub(") +
         this.ctxTools.childToString(ctx.children.lhs,args) +
         ","+

@@ -57,6 +57,13 @@
         "type": "node",
         "request": "launch",
         "name": "Sample",
+        "args": ["-e","js","examples/sample.scad"],
+        "program": "${workspaceFolder}/os2jscadMain.js"
+    },
+    {
+        "type": "node",
+        "request": "launch",
+        "name": "Sample w VectorMath",
         "args": ["-e","js","-v","examples/sample.scad"],
         "program": "${workspaceFolder}/os2jscadMain.js"
     },
