@@ -115,9 +115,12 @@ const Utils = Utilities.Utils;
 
     binaryMultDivExpression(ctx,args) {
       var result = "";
+
       //*
-      if(args.vectorMath && ctx.children.operator && ctx.$type ==="v"){
-        result = (ctx.children.operator[0].image === "*" ? "$h.vmult(" : "$h.vdiv(")
+      //if(args.vectorMath && ctx.children.operator && ctx.$type ==="v"){
+      if(ctx.children.operator){
+        var operator = ctx.children.operator[0].image;
+        result = ( operator === "*" ? "$h.vmult(" : operator ==="/" ? "$h.vdiv(" : "$h.vmod(")
         result += this.ctxTools.childToString(ctx.children.lhs,args)
         result += ","
         result += this.ctxTools.childToString(ctx.children.rhs,args)
@@ -132,7 +135,8 @@ const Utils = Utilities.Utils;
     binarySumDiffExpression(ctx,args) {
       var result = "";
       //*
-      if(args.vectorMath && ctx.children.operator && ctx.$type ==="v"){
+      //if(args.vectorMath && ctx.children.operator && ctx.$type ==="v"){
+      if(ctx.children.operator){
         result = (ctx.children.operator[0].image === "+" ? "$h.vadd(" : "$h.vsub(") +
         this.ctxTools.childToString(ctx.children.lhs,args) +
         ","+
@@ -147,7 +151,12 @@ const Utils = Utilities.Utils;
 
     unaryExpression(ctx,args) {
       //FIXME handle unary +/- for vectors
-      return this.ctxTools.iterateChildren(ctx,["operator","rhs"],args);
+      if(ctx.children.operator &&  ctx.children.operator[0].image === "-" ) {
+        return "$h.vneg(" + this.ctxTools.childToString(ctx.children.rhs,args) + ")";
+      } else {
+        return this.ctxTools.iterateChildren(ctx,["operator","rhs"],args);
+      }
+
     }
 
 
@@ -267,11 +276,13 @@ const Utils = Utilities.Utils;
 
       result += "[" + (exportsNames.map(elem=>libName+"."+elem)).toString() + "]=["+exportsNames.toString() +"]; // exports from lib " + libName + "\n";
       result += "}\n";
+
+
+      //result += "[" +exportsNames.toString() + "]=["  + (exportsNames.map(elem=>libName+"."+elem)).toString() +"]; // exports to globals\n";
+
+      result +=  "function main(args) { "
       result += libName + "();";
-
-      result += "[" +exportsNames.toString() + "]=["  + (exportsNames.map(elem=>libName+"."+elem)).toString() +"]; // exports to globals\n";
-
-      result +=  "function main(args) { return " + libName +".main(args);}"
+      result +=  "return " + libName +".main(args);}"
 
       return result;
     }
@@ -361,7 +372,8 @@ const Utils = Utilities.Utils;
       result +=  CommentTools.addComments(ctx.children.IncludeLiteral,args);
       result += args.stubs ? "eval(":"";
       result +=  'include ("' + filePath + '") '
-      result += args.stubs ? ");":"";
+      result += args.stubs ? ")":"";
+      result += ";\n" + libName + "();";
 
       //result +=  '; lib' + fileBase.split(".")[0] +'()\n';
       return result;

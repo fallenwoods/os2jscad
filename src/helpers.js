@@ -142,28 +142,35 @@ function helpers (){
     if(! Array.isArray(lhs) && ! Array.isArray(rhs)) result = lhs * rhs;
     else if(Array.isArray(lhs) && ! Array.isArray(rhs)) result = lhs.map((elem)=>$h.vmult(elem,rhs))
     else if(! Array.isArray(lhs) && Array.isArray(rhs)) result = rhs.map((elem)=>$h.vmult(lhs,elem))
-    else if(Array.isArray(rhs) && Array.isArray(rhs[0])) result =$h.vmatrix(lhs,rhs);
+    // both elements are arrays, if either is a matrix handle it in vmatrix?
+    else if(Array.isArray(lhs[0]) || Array.isArray(rhs[0])) result =$h.vmatrix(lhs,rhs);
     else if(lhs.length !== rhs.length) result = undef;
-    else  { result =0; for(var i=0;i<rhs.length;i++) { result += $h.vmult(lhs[i],rhs[i])} if(result!==result) result = undef;}
-    //else result = undef
+    else  { result =0; for(var i=0;i<rhs.length;i++) { result += $h.vmult(lhs[i],rhs[i])} if(result!==result) result = undef;} //item-wise vector mult
     return result;
   }
 
+  // FIXME - scad allows both v*m and m*v math. Need to provide for that here and call it from above
   $h.vmatrix = function vmatrix(lhs,rhs){
     var result=[];
-    if(!Array.isArray(rhs) || ! Array.isArray(rhs[0])) result = undef;
-    else if(Array.isArray(lhs[0]) && lhs[0].length != rhs.length) result = undef;  // row and column dimensions don't agree, can't do matrix math
-    else {
-      var xpose = $h.transpose(rhs);
-      if(Array.isArray(lhs[0])){
-        result = lhs.map((lhsElem)=>xpose.map((tElem)=>$h.vmult(lhsElem,tElem)));
-      } else {
-        result = xpose.map((tElem)=>$h.vmult(lhs,tElem));
-      }
+    var needsFlatten = false;
+
+    if(( ! Array.isArray(lhs[0]) && lhs.length != rhs.length) ||
+       (   Array.isArray(lhs[0]) && lhs[0].length != rhs.length)) return undef;  // row and column dimensions don't agree, can't do matrix math
+
+    var xpose = $h.transpose(rhs);
+    if(Array.isArray(lhs[0])){
+      result = lhs.map((lhsElem)=>xpose.map((tElem)=>$h.vmult(lhsElem,tElem)));
+    } else {
+      result = xpose.map((tElem)=>$h.vmult(lhs,tElem));
     }
+
+    // remove the extra layer created by transpose if the rhs was a vector not a matrix
+    if(!Array.isArray(rhs[0])) {result=result.reduce((acc,elem)=>{acc.push(elem[0]);return acc;},[])}
     return result;
   }
   $h.transpose = function transpose(mat){
+    if(! Array.isArray(mat[0]) ) return [mat];
+
     return mat[0].map((outer,i)=>mat.map((inner,j)=>mat[j][i]));
   }
 
@@ -176,6 +183,16 @@ function helpers (){
     else result = undef
     return result;
   }
+  $h.vmod = function vmod(lhs,rhs){
+    var result=[];
+    if(! Array.isArray(lhs) && ! Array.isArray(rhs)) result = lhs % rhs;
+    else result = undef
+    return result;
+  }
+  $h.vneg = function vdiv(rhs){
+    return $h.vmult(-1,rhs);
+  }
+
 
   $h.flatten = function (m){
     return m.reduce((acc,elem)=>acc.concat(elem),[])
