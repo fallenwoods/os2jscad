@@ -25,6 +25,7 @@ function helpers (){
   nullCSG = function nullCSG() { return polyhedron({points: [],triangles: []});} // This doens't explicitly exist in OpenScad, but is implied
   echof = function echof(args) {  console.log(...arguments); return nullCSG();} // adding nullCSG(); to this allows it to be added within a function chain. e.g. translate() echo() sphere()
   render = function render(convexity,obj) { return obj;}
+  multmatrix = function multmatrix(m,obj) { return $h.vmultmatrix(m,obj);}
   t=0;
   animate=0;
 
@@ -191,6 +192,12 @@ function helpers (){
   }
   $h.vneg = function vdiv(rhs){
     return $h.vmult(-1,rhs);
+  }
+
+  $h.vmultmatrix = function vmultmatrix(m,obj){
+    var newM =$h.flatten($h.transpose(m));
+    newM = new CSG.Matrix4x4(newM);
+    return obj.transform(newM);
   }
 
 

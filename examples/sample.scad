@@ -267,7 +267,7 @@ points=project_along_fpath(profile,ifpath,-17.1);
 faces=skin(profile,ifpath);
 
 //cube([14,14,1],center=true);
-translate(path[0]) //multmatrix(extendm(ztovturn(path[1]-path[0])))
+translate(path[0]) multmatrix(extendm(ztovturn(path[1]-path[0])))
 polyhedron(
 	points=points,
 	faces=faces
